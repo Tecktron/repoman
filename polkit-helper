@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""
+Repoman polkit helper.
+Reads JSON payload from stdin. Writes only within allowed directories.
+Run via pkexec — never call directly as root.
+
+Supported actions:
+  enable_repos  — update Enabled/Suites fields in existing .sources files
+  write_files   — write arbitrary content to allowed paths, with optional deletes
+"""
+import json
+import sys
+from pathlib import Path
+from debian.deb822 import Deb822
+
+_ALLOWED = frozenset([
+    Path("/etc/apt/sources.list.d"),
+    Path("/etc/update-manager/release-upgrades.d"),
+])
+
+
+def _safe(path: Path) -> bool:
+    try:
+        return path.resolve().parent in {p.resolve() for p in _ALLOWED}
+    except Exception:
+        return False
+
+
+def _apply_enable_repos(payload: dict) -> None:
+    for entry in payload["repos"]:
+        path = Path(entry["source_file"])
+
+        if not _safe(path):
+            print(f"ERROR: rejected path: {path}", file=sys.stderr)
+            sys.exit(1)
+
+        if not path.exists():
+            print(f"ERROR: file not found: {path}", file=sys.stderr)
+            sys.exit(1)
+
+        text = path.read_text(encoding="utf-8")
+        stanza = Deb822(text)
+
+        if "suites" in entry:
+            stanza["Suites"] = " ".join(entry["suites"])
+        if "enabled" in entry:
+            stanza["Enabled"] = "yes" if entry["enabled"] else "no"
+        if "description" in entry:
+            stanza["Description"] = entry["description"]
+
+        new_content = str(stanza)
+
+        try:
+            Deb822(new_content)
+        except Exception as exc:
+            print(f"ERROR: invalid DEB822 after edit: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(new_content, encoding="utf-8")
+        tmp.rename(path)
+        print(f"OK: {path}")
+
+
+def _apply_write_files(payload: dict) -> None:
+    # Validate all paths before writing anything
+    for entry in payload.get("writes", []):
+        path = Path(entry["path"])
+        if not _safe(path):
+            print(f"ERROR: rejected path: {path}", file=sys.stderr)
+            sys.exit(1)
+
+    for path_str in payload.get("deletes", []):
+        path = Path(path_str)
+        if not _safe(path):
+            print(f"ERROR: rejected delete path: {path}", file=sys.stderr)
+            sys.exit(1)
+
+    # Write atomically
+    for entry in payload.get("writes", []):
+        path = Path(entry["path"])
+        content = entry["content"]
+
+        # Validate DEB822 content before writing
+        try:
+            Deb822(content)
+        except Exception as exc:
+            print(f"ERROR: invalid DEB822 content for {path}: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(content, encoding="utf-8")
+        tmp.rename(path)
+        print(f"OK write: {path}")
+
+    # Delete after successful writes
+    for path_str in payload.get("deletes", []):
+        path = Path(path_str)
+        if path.exists():
+            path.unlink()
+            print(f"OK delete: {path}")
+
+
+if __name__ == "__main__":
+    try:
+        payload = json.loads(sys.stdin.read())
+    except json.JSONDecodeError as exc:
+        print(f"ERROR: invalid JSON: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    action = payload.get("action")
+    if action == "enable_repos":
+        _apply_enable_repos(payload)
+    elif action == "write_files":
+        _apply_write_files(payload)
+    else:
+        print(f"ERROR: unknown action: {action}", file=sys.stderr)
+        sys.exit(1)

@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repoman"
+version = "0.1.0"
+description = "GTK4 APT repository manager for Ubuntu/Xubuntu"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+repoman = "repoman.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "coverage",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    '.idea',
+    '.eggs',
+    '.git',
+    '.hg',
+    '*.sh',
+    'static',
+    '.*_cache',
+    '.venv',
+    'venv',
+    '_build',
+    'build',
+    'dist',
+    'configs',
+    'docker',
+    '.egg-info',
+    '.pytest_cache'
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "S", "C4", "N", "PT", "I", "PTH"]
+ignore = ["E501", "S101", "E402", "S603"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["repoman"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

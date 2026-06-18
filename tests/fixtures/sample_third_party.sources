@@ -1,0 +1,7 @@
+Types: deb
+URIs: https://packages.example.com/ubuntu
+Suites: noble
+Components: main contrib
+Enabled: yes
+Signed-By: /usr/share/keyrings/example.gpg
+Description: Example third-party repository

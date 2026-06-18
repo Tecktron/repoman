@@ -1,0 +1,7 @@
+Types: deb
+URIs: https://packages.example.com/ubuntu
+Suites: jammy
+Components: main
+Enabled: no
+Signed-By: /usr/share/keyrings/example2.gpg
+Description: Disabled stale repo

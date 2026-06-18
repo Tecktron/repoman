@@ -1,0 +1,7 @@
+Types: deb
+URIs: https://packages.docker.com/linux/ubuntu
+Suites: stable
+Components: main
+Enabled: yes
+Signed-By: /usr/share/keyrings/docker.gpg
+Description: Docker CE stable channel

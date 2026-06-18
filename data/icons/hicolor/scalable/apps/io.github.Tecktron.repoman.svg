@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Package/box body -->
+  <rect x="16" y="40" width="96" height="72" rx="8" ry="8"
+        fill="#3584e4" stroke="#1c71d8" stroke-width="2"/>
+  <!-- Package lid -->
+  <rect x="12" y="28" width="104" height="20" rx="6" ry="6"
+        fill="#1c71d8" stroke="#1a5fb4" stroke-width="2"/>
+  <!-- Lid centre band -->
+  <rect x="52" y="28" width="24" height="20"
+        fill="#1a5fb4"/>
+  <!-- Checkmark -->
+  <polyline points="36,80 56,100 92,60"
+            fill="none" stroke="white" stroke-width="10"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

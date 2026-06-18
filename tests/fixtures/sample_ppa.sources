@@ -1,0 +1,7 @@
+Types: deb
+URIs: https://ppa.launchpadcontent.net/testowner/testppa/ubuntu
+Suites: noble
+Components: main
+Enabled: yes
+Signed-By: /usr/share/keyrings/testowner-testppa.gpg
+Description: Test PPA for unit tests
