@@ -11,8 +11,11 @@ def repo_to_deb822(repo: Repository) -> str:
 
     Called by the polkit helper (and by converter.py) — never writes directly.
     Preserves field ordering: Types, URIs, Suites, Components, Enabled,
-    Signed-By (if present), Description (if present).
+    Signed-By (if present), X-Repolib-Name (if present).
     """
+    # Leading # comment line — repolib / software-properties-gtk convention
+    header = f"#{repo.description}\n" if repo.description else ""
+
     stanza = Deb822()
     stanza["Types"] = " ".join(repo.types)
     stanza["URIs"] = " ".join(repo.uris)
@@ -22,8 +25,8 @@ def repo_to_deb822(repo: Repository) -> str:
     if repo.signed_by:
         stanza["Signed-By"] = repo.signed_by
     if repo.description:
-        stanza["Description"] = repo.description
-    return str(stanza) + "\n"
+        stanza["X-Repolib-Name"] = repo.description
+    return header + str(stanza) + "\n"
 
 
 def enable_patch(repo: Repository, codename: str) -> dict:

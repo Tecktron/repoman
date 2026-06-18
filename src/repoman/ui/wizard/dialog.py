@@ -4,19 +4,19 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, GObject
+from gi.repository import Adw, GLib, GObject, Gtk
 
 from ...models import Repository, WizardState
 from ...utils import get_current_codename
 from .select_page import SelectReposPage
 
 
-class RepomanWizardDialog(Adw.Window):
+class RepomanWizardDialog(Gtk.Window):
     """
-    Upgrade assistant — modal window wrapping AdwNavigationView.
+    Upgrade assistant — modal Gtk.Window wrapping AdwNavigationView.
 
-    Uses Adw.Window(modal=True) rather than Adw.Dialog, which requires
-    libadwaita 1.5. Adw.Window(modal=True) works on libadwaita 1.4 (24.04).
+    Uses Gtk.Window so the system window manager (Xfwm4, etc.) draws the
+    titlebar with the user's own theme, consistent with the main window.
 
     Emits:
         repos-updated — after polkit writes succeed; caller must reload repo list
@@ -25,12 +25,13 @@ class RepomanWizardDialog(Adw.Window):
     __gtype_name__ = "RepomanWizardDialog"
     __gsignals__ = {
         "repos-updated": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "closing": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(
         self,
         repos: list[Repository],
-        parent: Adw.ApplicationWindow,
+        parent: Gtk.Window,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -41,20 +42,44 @@ class RepomanWizardDialog(Adw.Window):
             default_height=560,
             **kwargs,
         )
+        self._closing = False
         self._state = WizardState(
             candidate_repos=repos,
             target_codename=get_current_codename(),
             on_complete=self._handle_complete,
         )
         self._nav_view = Adw.NavigationView()
-        wrapper = Adw.ToolbarView()
-        wrapper.set_content(self._nav_view)
-        self.set_content(wrapper)
+        self._toast_overlay = Adw.ToastOverlay()
+        self._toast_overlay.set_child(self._nav_view)
+        self.set_child(self._toast_overlay)
 
         first_page = SelectReposPage(state=self._state, nav_view=self._nav_view)
-        self._nav_view.add(first_page)
         self._nav_view.push(first_page)
+
+        # Belt-and-suspenders: connect_after runs even when an earlier handler
+        # (e.g. AdwNavigationView) returns True and stops normal propagation.
+        self.connect_after("close-request", self._on_close_after)
+
+    def do_close_request(self) -> bool:
+        self._schedule_close()
+        return True
+
+    def _on_close_after(self, _win: Gtk.Window) -> bool:
+        self._schedule_close()
+        return True
+
+    def _schedule_close(self) -> None:
+        if self._closing:
+            return
+        self._closing = True
+        # Notify owner immediately so it clears its reference before any idle fires.
+        self.emit("closing")
+        self.set_visible(False)
+        GLib.idle_add(self.destroy)
+
+    def add_toast(self, toast: Adw.Toast) -> None:
+        self._toast_overlay.add_toast(toast)
 
     def _handle_complete(self) -> None:
         self.emit("repos-updated")
-        self.close()
+        self._schedule_close()

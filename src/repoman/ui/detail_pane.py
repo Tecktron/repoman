@@ -80,6 +80,22 @@ class DetailPane(Gtk.Box):
         detail_box.append(info_group)
 
         self._uri_row = Adw.ActionRow(title="URI")
+        self._uri_row.set_subtitle_selectable(True)
+
+        copy_btn = Gtk.Button.new_from_icon_name("edit-copy-symbolic")
+        copy_btn.set_tooltip_text("Copy URL to clipboard")
+        copy_btn.add_css_class("flat")
+        copy_btn.set_valign(Gtk.Align.CENTER)
+        copy_btn.connect("clicked", self._on_copy_uri)
+        self._uri_row.add_suffix(copy_btn)
+
+        self._open_uri_btn = Gtk.Button.new_from_icon_name("web-browser-symbolic")
+        self._open_uri_btn.set_tooltip_text("Open in browser")
+        self._open_uri_btn.add_css_class("flat")
+        self._open_uri_btn.set_valign(Gtk.Align.CENTER)
+        self._open_uri_btn.connect("clicked", self._on_open_uri)
+        self._uri_row.add_suffix(self._open_uri_btn)
+
         info_group.add(self._uri_row)
 
         self._format_row = Adw.ActionRow(title="Format")
@@ -92,7 +108,7 @@ class DetailPane(Gtk.Box):
         edit_group = Adw.PreferencesGroup(title="Settings")
         detail_box.append(edit_group)
 
-        self._desc_row = Adw.EntryRow(title="Description")
+        self._desc_row = Adw.EntryRow(title="Comment")
         edit_group.add(self._desc_row)
 
         self._suite_row = Adw.EntryRow(title="Suite / Codename")
@@ -140,6 +156,14 @@ class DetailPane(Gtk.Box):
     # ------------------------------------------------------------------
     # Save
     # ------------------------------------------------------------------
+
+    def _on_copy_uri(self, _button: Gtk.Button) -> None:
+        if self._repo and self._repo.uris:
+            self.get_clipboard().set(self._repo.uris[0])
+
+    def _on_open_uri(self, _button: Gtk.Button) -> None:
+        if self._repo and self._repo.uris:
+            Gtk.show_uri(self.get_root(), self._repo.uris[0], 0)
 
     def _on_save_clicked(self, _button: Gtk.Button) -> None:
         if self._repo is None:

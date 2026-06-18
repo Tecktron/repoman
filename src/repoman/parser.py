@@ -56,6 +56,36 @@ def _is_suite_agnostic(suites: list[str], agnostic_names: frozenset[str]) -> boo
     return all(s in agnostic_names or not (s.isalpha() and s.islower()) for s in suites)
 
 
+def _deb822_leading_comments(text: str) -> list[str | None]:
+    """
+    For each DEB822 paragraph, return the first # comment line that appears
+    immediately before it (or None).  This is how repolib / software-properties-gtk
+    stores a human-readable name: a bare "#Name" line at the top of the stanza,
+    not as a proper DEB822 field.
+    """
+    comments: list[str | None] = []
+    current_comment: str | None = None
+    in_paragraph = False
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            if in_paragraph:
+                in_paragraph = False
+                current_comment = None
+        elif stripped.startswith("#") and not in_paragraph:
+            if current_comment is None:
+                candidate = stripped.lstrip("#").strip()
+                if candidate:
+                    current_comment = candidate
+        elif not in_paragraph:
+            # First key:value line of a new paragraph
+            comments.append(current_comment)
+            in_paragraph = True
+
+    return comments
+
+
 class Parser:
     def __init__(self, sources_dir: Path = _SOURCES_DIR) -> None:
         self._sources_dir = sources_dir
@@ -85,9 +115,13 @@ class Parser:
         except OSError:
             return repos
 
-        for stanza in Deb822.iter_paragraphs(text):
+        # Extract leading # comments per paragraph (e.g. "#Gimp" written by repolib)
+        leading = _deb822_leading_comments(text)
+        for i, stanza in enumerate(Deb822.iter_paragraphs(text)):
             repo = self._deb822_stanza_to_repo(stanza, path)
             if repo is not None:
+                if repo.description is None and i < len(leading) and leading[i]:
+                    repo.description = leading[i]
                 repos.append(repo)
         return repos
 
@@ -103,7 +137,8 @@ class Parser:
         enabled_val = stanza.get("Enabled", "yes").strip().lower()
         enabled = enabled_val not in ("no", "false", "0")
 
-        description = stanza.get("Description", "").strip() or None
+        # X-Repolib-Name is what software-properties-gtk writes; fall back to Description
+        description = stanza.get("X-Repolib-Name", "").strip() or stanza.get("Description", "").strip() or None
         signed_by = stanza.get("Signed-By", "").strip() or None
 
         agnostic = _is_suite_agnostic(suites, self._agnostic_names)

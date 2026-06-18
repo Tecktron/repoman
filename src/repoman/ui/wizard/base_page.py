@@ -43,7 +43,10 @@ class RepomanWizardPage(Adw.NavigationPage):
 
         toolbar_view = Adw.ToolbarView()
         self.set_child(toolbar_view)
-        toolbar_view.add_top_bar(Adw.HeaderBar())
+        inner_header = Adw.HeaderBar()
+        inner_header.set_show_start_title_buttons(False)
+        inner_header.set_show_end_title_buttons(False)
+        toolbar_view.add_top_bar(inner_header)
 
         scroll = Gtk.ScrolledWindow(
             vexpand=True,

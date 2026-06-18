@@ -114,9 +114,7 @@ class ConfirmChangesPage(RepomanWizardPage):
 
     def _on_failure(self, message: str) -> bool:
         toast = Adw.Toast(title=f"Failed to apply: {message}", timeout=5)
-        root = self.get_root()
-        if hasattr(root, "add_toast"):
-            root.add_toast(toast)
+        self.get_root().add_toast(toast)
         self._next_button.set_label("Apply changes")
         self._next_button.set_sensitive(True)
         return GLib.SOURCE_REMOVE

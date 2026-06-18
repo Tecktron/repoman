@@ -1,29 +1,38 @@
 from __future__ import annotations
 
+import subprocess
 import threading
 
 import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from ..checker import get_network_error, reset_network_state
 from ..models import Repository
 from ..parser import Parser
-from ..paths import PKEXEC, POLKIT_HELPER
+from ..paths import PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
 from ..utils import repos_needing_attention
 from .detail_pane import DetailPane
 from .repo_row import RepoRow
 from .wizard.dialog import RepomanWizardDialog
 
 
-class RepomanWindow(Adw.ApplicationWindow):
+class RepomanWindow(Gtk.ApplicationWindow):
+    """
+    Main application window.
+
+    Uses Gtk.ApplicationWindow (not Adw.ApplicationWindow) so that the system
+    window manager (Xfwm4, etc.) draws the titlebar with the user's own theme.
+    All libadwaita widgets inside still work fine.
+    """
+
     __gtype_name__ = "RepomanWindow"
 
     def __init__(self, **kwargs) -> None:
         super().__init__(
-            title="repoman",
+            title="Repoman",
             default_width=900,
             default_height=600,
             **kwargs,
@@ -34,62 +43,50 @@ class RepomanWindow(Adw.ApplicationWindow):
         self._rows: list[RepoRow] = []
 
         self._build_ui()
-        # Load repos after the window is realized so the spinner shows
-        self.connect("realize", lambda _: GLib.idle_add(self._load_repos))
+        self.connect("realize", self._on_realize)
 
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        # Root toast overlay
         self._toast_overlay = Adw.ToastOverlay()
-        self.set_content(self._toast_overlay)
+        self.set_child(self._toast_overlay)
 
         outer_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._toast_overlay.set_child(outer_box)
 
-        # Banner (upgrade alert — hidden by default)
+        # Menu bar spanning full window width
+        menu_bar = Gtk.PopoverMenuBar.new_from_model(self._build_menu_model())
+        menu_bar.set_hexpand(True)
+        outer_box.append(menu_bar)
+        outer_box.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+
+        # Banner (upgrade alert — below menu bar, hidden by default)
         self._banner = Adw.Banner(revealed=False)
         self._banner.connect("button-clicked", lambda _: self.open_upgrade_wizard())
         outer_box.append(self._banner)
 
         # Main split pane
-        split = Adw.OverlaySplitView()
+        split = Adw.OverlaySplitView(sidebar_width_fraction=0.32, min_sidebar_width=260)
         outer_box.append(split)
 
         # --- Sidebar ---
         sidebar_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
 
-        sidebar_header = Adw.HeaderBar()
-        sidebar_header.set_title_widget(Gtk.Label(label="repoman"))
-
-        # Search button
-        self._search_button = Gtk.ToggleButton(icon_name="system-search-symbolic")
-        self._search_button.set_tooltip_text("Search repositories")
-        sidebar_header.pack_end(self._search_button)
-
-        # Menu button
-        menu_button = Gtk.MenuButton(icon_name="open-menu-symbolic")
-        menu_button.set_tooltip_text("Main menu")
-        menu_button.set_menu_model(self._build_menu())
-        sidebar_header.pack_end(menu_button)
-
-        sidebar_box.append(sidebar_header)
-
-        # Search bar
-        self._search_bar = Gtk.SearchBar(search_mode_enabled=False)
-        self._search_entry = Gtk.SearchEntry(hexpand=True)
-        self._search_entry.connect("search-changed", self._on_search_changed)
-        self._search_bar.set_child(self._search_entry)
-        self._search_bar.connect_entry(self._search_entry)
-        self._search_button.bind_property(
-            "active",
-            self._search_bar,
-            "search-mode-enabled",
-            GObject.BindingFlags.BIDIRECTIONAL,
+        # Search entry — always visible at the top of the sidebar
+        search_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            margin_start=6,
+            margin_end=6,
+            margin_top=6,
+            margin_bottom=6,
         )
-        sidebar_box.append(self._search_bar)
+        self._search_entry = Gtk.SearchEntry(hexpand=True, placeholder_text="Search repositories…")
+        self._search_entry.connect("search-changed", self._on_search_changed)
+        search_box.append(self._search_entry)
+        sidebar_box.append(search_box)
+        sidebar_box.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
 
         # Repo list
         scroll = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
@@ -98,9 +95,8 @@ class RepomanWindow(Adw.ApplicationWindow):
         self._list_box.set_filter_func(self._filter_row)
         self._list_box.connect("row-selected", self._on_row_selected)
         scroll.set_child(self._list_box)
-        sidebar_box.append(scroll)
 
-        # Loading spinner (shown while parsing)
+        # Loading spinner
         self._spinner_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             vexpand=True,
@@ -121,43 +117,65 @@ class RepomanWindow(Adw.ApplicationWindow):
         split.set_sidebar(sidebar_box)
 
         # --- Detail pane ---
-        detail_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        detail_header = Adw.HeaderBar(show_title=False)
-        detail_box.append(detail_header)
-
         self._detail_pane = DetailPane(vexpand=True)
         self._detail_pane.connect("repo-saved", self._on_repo_saved)
-        detail_box.append(self._detail_pane)
+        split.set_content(self._detail_pane)
 
-        split.set_content(detail_box)
-
-        # Keyboard shortcuts
+        # Actions
         self._setup_actions()
 
-    def _build_menu(self) -> Gio.Menu:
-        menu = Gio.Menu()
-        menu.append("Upgrade assistant…", "win.upgrade-wizard")
-        menu.append("Keyboard shortcuts", "win.show-shortcuts")
-        menu.append_section(None, self._build_help_section())
-        return menu
+    def _build_menu_model(self) -> Gio.MenuModel:
+        model = Gio.Menu()
 
-    def _build_help_section(self) -> Gio.Menu:
-        section = Gio.Menu()
-        section.append("Help", "win.open-help")
-        section.append("About repoman", "win.about")
-        return section
+        # Launch
+        launch = Gio.Menu()
+        launch.append("Run Upgrade Assistant…", "win.upgrade-wizard")
+        tools_section = Gio.Menu()
+        tools_section.append("Software Updater", "win.launch-updater")
+        tools_section.append("Software & Updates", "win.launch-software-properties")
+        launch.append_section(None, tools_section)
+        model.append_submenu("Launch", launch)
+
+        # Help (keyboard shortcuts merged in here; no separate Settings menu)
+        help_menu = Gio.Menu()
+        help_menu.append("Keyboard Shortcuts", "win.show-shortcuts")
+        help_section = Gio.Menu()
+        help_section.append("Help", "win.open-help")
+        help_section.append("About repoman", "win.about")
+        help_menu.append_section(None, help_section)
+        model.append_submenu("Help", help_menu)
+
+        return model
 
     def _setup_actions(self) -> None:
-        actions = [
+        # Standard actions
+        for name, callback in [
             ("upgrade-wizard", self.open_upgrade_wizard),
             ("show-shortcuts", self._show_shortcuts),
             ("open-help", self._open_help),
             ("about", self._show_about),
-        ]
-        for name, callback in actions:
+        ]:
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, cb=callback: cb())
             self.add_action(action)
+
+        # Launch companion tools — disabled if not installed
+        updater_action = Gio.SimpleAction.new("launch-updater", None)
+        updater_action.connect("activate", lambda _a, _p: self._launch(UPDATE_MANAGER))
+        updater_action.set_enabled(UPDATE_MANAGER is not None)
+        self.add_action(updater_action)
+
+        props_action = Gio.SimpleAction.new("launch-software-properties", None)
+        props_action.connect("activate", lambda _a, _p: self._launch(SOFTWARE_PROPERTIES))
+        props_action.set_enabled(SOFTWARE_PROPERTIES is not None)
+        self.add_action(props_action)
+
+    # ------------------------------------------------------------------
+    # Realize / startup
+    # ------------------------------------------------------------------
+
+    def _on_realize(self, _widget) -> None:
+        GLib.idle_add(self._load_repos)
 
     # ------------------------------------------------------------------
     # Repo loading
@@ -226,7 +244,6 @@ class RepomanWindow(Adw.ApplicationWindow):
     def _on_repo_toggled(self, _row: RepoRow, repo: Repository) -> None:
         """Quick enable/disable toggle — writes immediately via polkit."""
         import json
-        import subprocess
 
         from ..writer import repo_to_deb822
 
@@ -257,11 +274,19 @@ class RepomanWindow(Adw.ApplicationWindow):
         self._update_banner()
 
     # ------------------------------------------------------------------
+    # Launch companion tools
+    # ------------------------------------------------------------------
+
+    def _launch(self, cmd: str | None) -> None:
+        if cmd:
+            subprocess.Popen([cmd])
+
+    # ------------------------------------------------------------------
     # Wizard
     # ------------------------------------------------------------------
 
     def open_upgrade_wizard(self) -> None:
-        if self._wizard and self._wizard.get_visible():
+        if self._wizard is not None:
             self._wizard.present()
             return
 
@@ -278,7 +303,7 @@ class RepomanWindow(Adw.ApplicationWindow):
         reset_network_state()
         self._wizard = RepomanWizardDialog(repos=attention, parent=self)
         self._wizard.connect("repos-updated", self._on_repos_updated)
-        self._wizard.connect("closed", lambda _: setattr(self, "_wizard", None))
+        self._wizard.connect("closing", lambda _: setattr(self, "_wizard", None))
         self._wizard.present()
 
     def _on_repos_updated(self, _dialog: RepomanWizardDialog) -> None:
@@ -309,17 +334,18 @@ class RepomanWindow(Adw.ApplicationWindow):
         Gtk.show_uri(self, "https://github.com/Tecktron/repoman", 0)
 
     def _show_about(self) -> None:
-        about = Adw.AboutWindow(
+        about = Gtk.AboutDialog(
             transient_for=self,
-            application_name="repoman",
-            application_icon="io.github.Tecktron.repoman",
-            developer_name="Tecktron",
+            modal=True,
+            program_name="repoman",
+            logo_icon_name="io.github.Tecktron.repoman",
             version="0.1.0",
             website="https://github.com/Tecktron/repoman",
-            issue_url="https://github.com/Tecktron/repoman/issues",
+            website_label="GitHub",
             license_type=Gtk.License.GPL_3_0,
-            comments="GTK4 APT repository manager for Ubuntu/Xubuntu.\n\n"
+            comments="GTK4 APT repository manager for Ubuntu/Xubuntu.\n"
             "Helps you review and re-enable third-party repos after an Ubuntu upgrade.",
+            authors=["Tecktron"],
         )
         about.present()
 

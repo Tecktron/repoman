@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 import gi
 
 gi.require_version("Adw", "1")
@@ -18,22 +20,24 @@ class RepoRow(Adw.ActionRow):
 
     def __init__(self, repo: Repository, **kwargs) -> None:
         super().__init__(
-            title=repo.display_name,
-            subtitle=repo.uris[0] if repo.uris else "",
+            title=_short_title(repo),
+            subtitle=_subtitle(repo),
             **kwargs,
         )
         self._repo = repo
         self._updating = False
+
+        if repo.uris:
+            self.set_tooltip_text("\n".join(repo.uris))
 
         # Enable/disable switch on the left
         self._switch = Gtk.Switch(valign=Gtk.Align.CENTER)
         self._switch.set_active(repo.enabled)
         self._switch.connect("state-set", self._on_switch_toggled)
         self.add_prefix(self._switch)
-        self.set_activatable_widget(self._switch)
 
         self._update_style()
-        self._badge = self._make_badge()
+        self._badge = _make_badge(self._repo.availability)
         if self._badge:
             self.add_suffix(self._badge)
 
@@ -45,8 +49,10 @@ class RepoRow(Adw.ActionRow):
         """Refresh display after the repo model changes."""
         self._repo = repo
         self._updating = True
-        self.set_title(repo.display_name)
-        self.set_subtitle(repo.uris[0] if repo.uris else "")
+        self.set_title(_short_title(repo))
+        self.set_subtitle(_subtitle(repo))
+        if repo.uris:
+            self.set_tooltip_text("\n".join(repo.uris))
         self._switch.set_active(repo.enabled)
         self._updating = False
         self._update_style()
@@ -66,15 +72,34 @@ class RepoRow(Adw.ActionRow):
         else:
             self.add_css_class("dim-label")
 
-    def _make_badge(self) -> Gtk.Widget | None:
-        return _availability_icon(self._repo.availability)
-
     def _refresh_badge(self) -> None:
         if self._badge:
             self.remove(self._badge)
         self._badge = _make_badge(self._repo.availability)
         if self._badge:
             self.add_suffix(self._badge)
+
+
+def _short_title(repo: Repository) -> str:
+    """Concise row title: description if set, otherwise ppa:user/name or hostname."""
+    if repo.description:
+        return repo.description
+    if not repo.uris:
+        return "(no URI)"
+    uri = repo.uris[0]
+    if repo.is_ppa:
+        # http://ppa.launchpad.net/user/ppa/ubuntu → ppa:user/ppa
+        path_parts = urlparse(uri).path.strip("/").split("/")
+        if len(path_parts) >= 2:
+            return f"ppa:{path_parts[0]}/{path_parts[1]}"
+    return urlparse(uri).netloc or uri
+
+
+def _subtitle(repo: Repository) -> str:
+    """Show the first URI as subtitle only when a description provides the title."""
+    if not repo.description or not repo.uris:
+        return ""
+    return repo.uris[0]
 
 
 def _availability_icon(status: AvailabilityStatus) -> Gtk.Widget | None:

@@ -46,11 +46,12 @@ class TestRepotoDeb822:
     def test_description_included_when_set(self):
         repo = _make_repo(description="My repo description")
         content = repo_to_deb822(repo)
-        assert "Description: My repo description" in content
+        assert "X-Repolib-Name: My repo description" in content
 
     def test_description_absent_when_none(self):
         repo = _make_repo(description=None)
         content = repo_to_deb822(repo)
+        assert "X-Repolib-Name" not in content
         assert "Description" not in content
 
     def test_signed_by_absent_when_none(self):
