@@ -1,0 +1,62 @@
+site_name: Repoman
+site_description: Repossess your PPAs every time Ubuntu upgrades
+site_url: https://YOURDOMAIN.com  # replace with actual domain
+repo_url: https://github.com/Tecktron/repoman
+repo_name: Tecktron/repoman
+copyright: Copyright &copy; Tecktron Multimedia Enterprises
+
+theme:
+  name: material
+  custom_dir: overrides
+  palette:
+    # Locked to dark — the toxic-green/red poster aesthetic doesn't
+    # survive a light-mode toggle, so there isn't one.
+    # NOTE: must NOT use primary: black — Material hardcodes the header/
+    # nav/tabs background for that specific swatch, bypassing CSS variable
+    # overrides entirely. "green" behaves normally and lets extra.css drive
+    # the actual color.
+    scheme: slate
+    primary: green
+    accent: purple
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Why repoman: why.md
+  - Installation: install.md
+  - Getting Started: getting-started.md
+  - Usage:
+    - Managing Repositories: usage/managing-repos.md
+    - Upgrade Workflow: usage/upgrade-workflow.md
+    - Annotations: usage/annotations.md
+  - Reference:
+    - Configuration: reference/config.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg

@@ -12,3 +12,6 @@ launchpadlib
 pytest
 pytest-cov
 pytest-mock
+
+# Documentation
+mkdocs-material

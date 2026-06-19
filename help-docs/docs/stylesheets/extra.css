@@ -1,0 +1,194 @@
+/* =========================================================
+   repoman docs — movie-poster color scheme
+   Dark / toxic green / bold red / light purple
+   ========================================================= */
+
+:root,
+[data-md-color-scheme="slate"] {
+  /* --- Base surfaces -------------------------------------- */
+  --md-default-bg-color:            #0a0d0a;
+  --md-default-bg-color--light:     #11140f;
+  --md-default-bg-color--lighter:   #181c16;
+  --md-default-bg-color--lightest:  #232a1f;
+
+  /* --- Body text: cream off-white sampled from the Repo Man car
+         in the green-triangle poster (avg pixel #b4a985) --- */
+  --md-default-fg-color:            #c9bea0;
+  --md-default-fg-color--light:     #a89c7d;
+  --md-default-fg-color--lighter:   #756b52;
+  --md-default-fg-color--lightest:  #3a3528;
+
+  /* --- Primary = toxic/alien green, drives header, links, buttons, nav highlight */
+  --md-primary-fg-color:            #39ff14;
+  --md-primary-fg-color--light:     #74ff57;
+  --md-primary-fg-color--dark:      #1fa007;
+  /* This is TEXT/ICON color on top of the green surface (header, primary
+     buttons) — not a background token. Dark, for contrast against bright green. */
+  --md-primary-bg-color:             #061004;
+  --md-primary-bg-color--light:      #2a3a26;
+
+  /* --- Accent = light purple, used sparingly for borders/highlights */
+  --md-accent-fg-color:             #b388ff;
+  --md-accent-fg-color--transparent: rgba(179, 136, 255, .12);
+  --md-accent-bg-color:             #0a0d0a;
+
+  /* --- Links --- */
+  --md-typeset-a-color:             #39ff14;
+
+  /* --- Code blocks: slightly raised dark panel --- */
+  --md-code-bg-color:               #14180f;
+  --md-code-fg-color:               #d9cfa9;
+
+  /* --- Custom brand tokens (not part of Material's variable set) --- */
+  --rp-red:        #ff2d4a;
+  --rp-red-bright: #ff2d4a;
+  --rp-green-glow: rgba(57, 255, 20, .35);
+}
+
+.md-header__title, .md-header__button {
+    color: var(--rp-red-bright);
+}
+.md-header__title--active {
+    color: var(--md-primary-bg-color);
+}
+
+/* Link hover: brighter green */
+.md-typeset a:hover {
+  color: var(--md-primary-fg-color--light);
+}
+
+/* --- Headings: bold red, poster-title style ---------------- */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--rp-red);
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.md-typeset h1 {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  padding-bottom: .3rem;
+}
+
+/* --- Nav / sidebar: keep links green, current page bright green --- */
+.md-nav__link--active,
+.md-nav__link:focus,
+.md-nav__link:hover {
+  color: var(--md-primary-fg-color);
+}
+
+/* --- Buttons --- */
+.md-button {
+  border-radius: .3rem;
+  font-weight: 600;
+  border: 2px solid var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+}
+
+.md-button:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+  border-color: var(--md-accent-fg-color);
+}
+
+.md-button--primary {
+  background-color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-fg-color);
+  color: #061004; /* near-black text on bright green for contrast */
+}
+
+.md-button--primary:hover {
+  background-color: var(--md-primary-fg-color--light);
+  border-color: var(--md-primary-fg-color--light);
+  box-shadow: 0 0 18px var(--rp-green-glow);
+}
+
+/* --- Hero ------------------------------------------------ */
+.rp-hero {
+  padding: 4rem 0 3.5rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 0%, var(--rp-green-glow) 0%, transparent 70%),
+    var(--md-default-bg-color);
+}
+
+.rp-hero__inner {
+  max-width: 44rem;
+}
+
+.rp-hero__quote {
+  font-size: .85rem;
+  color: var(--md-accent-fg-color);
+  font-style: italic;
+  line-height: 1.7;
+  margin-bottom: 1.25rem;
+  letter-spacing: .01em;
+  opacity: .9;
+}
+
+.rp-hero__title {
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 2rem;
+  color: var(--rp-red);
+  text-transform: uppercase;
+  border: none !important; /* override the h1 underline above */
+}
+
+.rp-hero__actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+/* --- Quick install banner -------------------------------- */
+.rp-quick-install {
+  margin: 2.5rem 0 0;
+  padding: 1.5rem;
+  border-left: 4px solid var(--md-primary-fg-color);
+  background: var(--md-code-bg-color);
+  border-radius: 0 .4rem .4rem 0;
+}
+
+.rp-quick-install p {
+  margin: 0 0 .5rem;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--md-accent-fg-color);
+  font-weight: 600;
+}
+
+/* --- Pre-release / warning admonitions: tint red, not orange --- */
+.md-typeset .admonition.warning,
+.md-typeset .warning > .admonition-title {
+  border-color: var(--rp-red);
+}
+
+.md-typeset .warning > .admonition-title {
+  background-color: rgba(255, 45, 74, .1);
+}
+
+.md-typeset .warning > .admonition-title::before {
+  background-color: var(--rp-red);
+}
+
+/* --- Feature cards ---------------------------------------- */
+.md-typeset .grid.cards > ul > li {
+  border-color: var(--md-default-fg-color--lightest);
+  background-color: var(--md-default-bg-color--light);
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-primary-fg-color);
+  box-shadow: 0 0 14px var(--rp-green-glow);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+/* Card icons: toxic green */
+.md-typeset .grid.cards > ul > li .twemoji,
+.md-typeset .grid.cards > ul > li [class^="twemoji"] {
+  color: var(--md-primary-fg-color);
+}

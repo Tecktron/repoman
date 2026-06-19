@@ -1,0 +1,26 @@
+{% extends "main.html" %}
+
+{% block tabs %}
+{{ super() }}
+<section class="rp-hero">
+  <div class="md-grid">
+    <div class="rp-hero__inner md-typeset">
+      <p class="rp-hero__quote">
+        Lobotomy? Isn't that for loonies?<br>
+        <em>Well, let's go get sushi and not pay.</em>
+      </p>
+      <h1 class="rp-hero__title">
+        Repoman repossesses your PPAs<br>every time Ubuntu upgrades.
+      </h1>
+      <nav class="rp-hero__actions">
+        <a href="{{ 'install/' | url }}" class="md-button md-button--primary">
+          Install repoman
+        </a>
+        <a href="{{ 'why/' | url }}" class="md-button">
+          Why repoman?
+        </a>
+      </nav>
+    </div>
+  </div>
+</section>
+{% endblock %}
