@@ -127,14 +127,15 @@ class RepomanWindow(Gtk.ApplicationWindow):
     def _build_menu_model(self) -> Gio.MenuModel:
         model = Gio.Menu()
 
-        # Launch
-        launch = Gio.Menu()
-        launch.append("Run Upgrade Assistant…", "win.upgrade-wizard")
-        tools_section = Gio.Menu()
-        tools_section.append("Software Updater", "win.launch-updater")
-        tools_section.append("Software & Updates", "win.launch-software-properties")
-        launch.append_section(None, tools_section)
-        model.append_submenu("Launch", launch)
+        # Tools
+        tools = Gio.Menu()
+        tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
+        tools.append("Disable All Third-Party Repos…", "win.disable-all-repos")
+        companion_section = Gio.Menu()
+        companion_section.append("Software Updater", "win.launch-updater")
+        companion_section.append("Software & Updates", "win.launch-software-properties")
+        tools.append_section(None, companion_section)
+        model.append_submenu("Tools", tools)
 
         # Help (keyboard shortcuts merged in here; no separate Settings menu)
         help_menu = Gio.Menu()
@@ -158,6 +159,12 @@ class RepomanWindow(Gtk.ApplicationWindow):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, cb=callback: cb())
             self.add_action(action)
+
+        # Disable-all action — sensitivity updated after repo load
+        self._disable_all_action = Gio.SimpleAction.new("disable-all-repos", None)
+        self._disable_all_action.connect("activate", lambda _a, _p: self._confirm_disable_all())
+        self._disable_all_action.set_enabled(False)
+        self.add_action(self._disable_all_action)
 
         # Launch companion tools — disabled if not installed
         updater_action = Gio.SimpleAction.new("launch-updater", None)
@@ -214,6 +221,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             self._banner.set_revealed(True)
         else:
             self._banner.set_revealed(False)
+        self._disable_all_action.set_enabled(any(r.enabled for r in self._repos))
 
     # ------------------------------------------------------------------
     # Search / filter
@@ -272,6 +280,68 @@ class RepomanWindow(Gtk.ApplicationWindow):
                 row.refresh(repo)
                 break
         self._update_banner()
+
+    # ------------------------------------------------------------------
+    # Disable all third-party repos
+    # ------------------------------------------------------------------
+
+    def _confirm_disable_all(self) -> None:
+        enabled_count = sum(1 for r in self._repos if r.enabled)
+        if enabled_count == 0:
+            return
+        dialog = Adw.AlertDialog.new(
+            "Disable all third-party repositories?",
+            f"This will disable all {enabled_count} enabled "
+            f"{'repository' if enabled_count == 1 else 'repositories'}. "
+            "You can re-enable them individually in repoman after your upgrade.",
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("disable", "Disable All")
+        dialog.set_response_appearance("disable", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_disable_all_response)
+        dialog.present(self)
+
+    def _on_disable_all_response(self, _dialog: Adw.AlertDialog, response: str) -> None:
+        if response != "disable":
+            return
+        import json
+
+        from ..writer import repo_to_deb822
+
+        to_disable = [r for r in self._repos if r.enabled]
+        for repo in to_disable:
+            repo.enabled = False
+
+        writes = [{"path": str(r.source_file), "content": repo_to_deb822(r)} for r in to_disable]
+        payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
+
+        def _write() -> None:
+            result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+            if result.returncode == 0:
+                GLib.idle_add(self._on_disable_all_success, len(to_disable))
+            else:
+                GLib.idle_add(self._on_disable_all_failure, result.stderr.strip(), to_disable)
+
+        threading.Thread(target=_write, daemon=True).start()
+
+    def _on_disable_all_success(self, count: int) -> bool:
+        for row in self._rows:
+            row.refresh(row.repo)
+        self._update_banner()
+        self._toast_overlay.add_toast(
+            Adw.Toast(title=f"Disabled {count} {'repository' if count == 1 else 'repositories'}", timeout=4)
+        )
+        return GLib.SOURCE_REMOVE
+
+    def _on_disable_all_failure(self, message: str, repos: list) -> bool:
+        for repo in repos:
+            repo.enabled = True
+        for row in self._rows:
+            row.refresh(row.repo)
+        self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to disable repositories: {message}", timeout=5))
+        return GLib.SOURCE_REMOVE
 
     # ------------------------------------------------------------------
     # Launch companion tools

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 from debian.deb822 import Deb822
 
@@ -13,6 +14,17 @@ _USER_AGNOSTIC_CONF = Path.home() / ".config" / "repoman" / "suite-agnostic.conf
 _SYSTEM_AGNOSTIC_CONF = Path("/usr/share/repoman/suite-agnostic.conf")
 # Development fallback: config bundled alongside this source tree
 _DEV_AGNOSTIC_CONF = Path(__file__).parent.parent.parent / "data" / "repoman-suite-agnostic.conf"
+
+# URIs from these hostnames are managed by Ubuntu/Canonical directly and
+# should never be shown, edited, or disabled by repoman.
+_OFFICIAL_UBUNTU_HOSTS = frozenset(
+    [
+        "archive.ubuntu.com",
+        "security.ubuntu.com",
+        "ports.ubuntu.com",  # non-x86 arch mirror
+        "esm.ubuntu.com",  # Ubuntu Pro / ESM — managed by ubuntu-advantage-tools
+    ]
+)
 
 _BUILTIN_AGNOSTIC = frozenset(
     [
@@ -42,6 +54,11 @@ def _load_agnostic_names() -> frozenset[str]:
                     names.add(line)
             return frozenset(names) if names else _BUILTIN_AGNOSTIC
     return _BUILTIN_AGNOSTIC
+
+
+def _is_official_ubuntu(uris: list[str]) -> bool:
+    """Return True if all URIs point at Ubuntu/Canonical official infrastructure."""
+    return bool(uris) and all(urlparse(u).hostname in _OFFICIAL_UBUNTU_HOSTS for u in uris)
 
 
 def _is_suite_agnostic(suites: list[str], agnostic_names: frozenset[str]) -> bool:
@@ -133,6 +150,8 @@ class Parser:
 
         if not types_raw or not uris_raw or not suites:
             return None
+        if _is_official_ubuntu(uris_raw):
+            return None
 
         enabled_val = stanza.get("Enabled", "yes").strip().lower()
         enabled = enabled_val not in ("no", "false", "0")
@@ -217,6 +236,8 @@ class Parser:
         components = parts[idx:]
 
         suites = [suite]
+        if _is_official_ubuntu([uri]):
+            return None
         agnostic = _is_suite_agnostic(suites, self._agnostic_names)
 
         repo = Repository(

@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
+import repoman.parser as parser_module
 from repoman.models import AvailabilityStatus, FileFormat
-from repoman.parser import Parser
+from repoman.parser import _BUILTIN_AGNOSTIC, Parser, _is_suite_agnostic, _load_agnostic_names
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -145,3 +146,139 @@ class TestOneLineParsing:
         (tmp_path / "multi.sources").write_text(content)
         repos = parser.load_all()
         assert len(repos) == 2
+
+
+class TestParserEdgeCases:
+    def test_agnostic_names_fallback_to_builtin(self, monkeypatch, tmp_path):
+        """When no agnostic config file exists anywhere, built-ins are returned."""
+        monkeypatch.setattr(parser_module, "_USER_AGNOSTIC_CONF", tmp_path / "a.conf")
+        monkeypatch.setattr(parser_module, "_SYSTEM_AGNOSTIC_CONF", tmp_path / "b.conf")
+        monkeypatch.setattr(parser_module, "_DEV_AGNOSTIC_CONF", tmp_path / "c.conf")
+        assert _load_agnostic_names() == _BUILTIN_AGNOSTIC
+
+    def test_suite_agnostic_empty_suites(self):
+        assert _is_suite_agnostic([], _BUILTIN_AGNOSTIC) is False
+
+    def test_leading_comment_becomes_description(self, parser, tmp_path):
+        """A bare #Name line immediately before a stanza is used as description."""
+        (tmp_path / "named.sources").write_text(
+            "#My Custom Repo\nTypes: deb\nURIs: https://example.com\nSuites: noble\nComponents: main\n"
+        )
+        repos = parser.load_all()
+        assert len(repos) == 1
+        assert repos[0].description == "My Custom Repo"
+
+    def test_leading_blank_line_before_stanza(self, parser, tmp_path):
+        """A blank line before the first stanza is handled without error."""
+        (tmp_path / "blanklead.sources").write_text(
+            "\nTypes: deb\nURIs: https://example.com\nSuites: noble\nComponents: main\n"
+        )
+        repos = parser.load_all()
+        assert len(repos) == 1
+
+    def test_unreadable_sources_file(self, parser, tmp_path):
+        f = tmp_path / "unreadable.sources"
+        f.write_text("Types: deb\nURIs: https://example.com\nSuites: noble\nComponents: main\n")
+        f.chmod(0o000)
+        try:
+            assert parser.load_all() == []
+        finally:
+            f.chmod(0o644)
+
+    def test_unreadable_list_file(self, parser, tmp_path):
+        f = tmp_path / "unreadable.list"
+        f.write_text("deb https://example.com noble main\n")
+        f.chmod(0o000)
+        try:
+            assert parser.load_all() == []
+        finally:
+            f.chmod(0o644)
+
+    def test_blank_lines_in_list_file_skipped(self, parser, tmp_path):
+        (tmp_path / "spaced.list").write_text("\ndeb https://example.com noble main\n\n")
+        repos = parser.load_all()
+        assert len(repos) == 1
+
+    def test_too_short_one_line_entry_skipped(self, parser, tmp_path):
+        """A one-line entry with fewer than 3 tokens is silently skipped."""
+        (tmp_path / "short.list").write_text("deb https://example.com\n")
+        assert parser.load_all() == []
+
+    def test_non_deb_type_skipped(self, parser, tmp_path):
+        """Lines not starting with deb or deb-src are silently skipped."""
+        (tmp_path / "rpm.list").write_text("rpm https://example.com noble main\n")
+        assert parser.load_all() == []
+
+    def test_options_block_exhausts_remaining_parts(self, parser, tmp_path):
+        """A multi-token options block that consumes all remaining parts is skipped."""
+        (tmp_path / "opts.list").write_text("deb [arch=amd64 signed-by=/foo/bar.gpg]\n")
+        assert parser.load_all() == []
+
+    def test_second_consecutive_comment_before_stanza_ignored(self, parser, tmp_path):
+        """Only the first leading comment is used; subsequent ones before the same stanza are ignored."""
+        (tmp_path / "twocomments.sources").write_text(
+            "#First Comment\n#Second Comment\nTypes: deb\nURIs: https://example.com\nSuites: noble\nComponents: main\n"
+        )
+        repos = parser.load_all()
+        assert repos[0].description == "First Comment"
+
+    def test_bare_hash_comment_line_ignored(self, parser, tmp_path):
+        """A comment line with no text after the # is not used as a description."""
+        (tmp_path / "barehash.sources").write_text(
+            "#\nTypes: deb\nURIs: https://example.com\nSuites: noble\nComponents: main\n"
+        )
+        repos = parser.load_all()
+        assert repos[0].description is None
+
+
+class TestOfficialUbuntuFiltering:
+    """Official Ubuntu/Canonical repos must never appear in the list."""
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "http://archive.ubuntu.com/ubuntu",
+            "http://security.ubuntu.com/ubuntu",
+            "http://ports.ubuntu.com/ubuntu-ports",
+            "https://esm.ubuntu.com/apps/ubuntu",
+        ],
+    )
+    def test_official_deb822_uri_skipped(self, parser, tmp_path, uri):
+        (tmp_path / "ubuntu.sources").write_text(
+            f"Types: deb\nURIs: {uri}\nSuites: noble\nComponents: main\nEnabled: yes\n"
+        )
+        assert parser.load_all() == []
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "http://archive.ubuntu.com/ubuntu",
+            "http://security.ubuntu.com/ubuntu",
+            "http://ports.ubuntu.com/ubuntu-ports",
+        ],
+    )
+    def test_official_one_line_uri_skipped(self, parser, tmp_path, uri):
+        (tmp_path / "ubuntu.list").write_text(f"deb {uri} noble main\n")
+        assert parser.load_all() == []
+
+    def test_mixed_file_only_returns_third_party(self, parser, tmp_path):
+        """A file with both official and third-party stanzas returns only the third-party one."""
+        content = (
+            "Types: deb\nURIs: http://archive.ubuntu.com/ubuntu\n"
+            "Suites: noble\nComponents: main\nEnabled: yes\n\n"
+            "Types: deb\nURIs: https://packages.example.com\n"
+            "Suites: noble\nComponents: main\nEnabled: yes\n"
+        )
+        (tmp_path / "mixed.sources").write_text(content)
+        repos = parser.load_all()
+        assert len(repos) == 1
+        assert repos[0].uris == ["https://packages.example.com"]
+
+    def test_third_party_ubuntu_subdomain_not_filtered(self, parser, tmp_path):
+        """A hostname that merely contains 'ubuntu' but isn't an official host is kept."""
+        (tmp_path / "third.sources").write_text(
+            "Types: deb\nURIs: https://ppa.launchpadcontent.net/user/ppa/ubuntu\n"
+            "Suites: noble\nComponents: main\nEnabled: yes\n"
+        )
+        repos = parser.load_all()
+        assert len(repos) == 1
