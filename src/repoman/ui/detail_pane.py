@@ -57,7 +57,7 @@ class DetailPane(Gtk.Box):
         empty = Adw.StatusPage(
             title="No repository selected",
             description="Select a repository from the list to view its details.",
-            icon_name="drive-multidisk-symbolic",
+            icon_name="folder-symbolic",
             vexpand=True,
         )
         self._stack.add_named(empty, "empty")
@@ -89,7 +89,7 @@ class DetailPane(Gtk.Box):
         copy_btn.connect("clicked", self._on_copy_uri)
         self._uri_row.add_suffix(copy_btn)
 
-        self._open_uri_btn = Gtk.Button.new_from_icon_name("web-browser-symbolic")
+        self._open_uri_btn = Gtk.Button.new_from_icon_name("applications-internet-symbolic")
         self._open_uri_btn.set_tooltip_text("Open in browser")
         self._open_uri_btn.add_css_class("flat")
         self._open_uri_btn.set_valign(Gtk.Align.CENTER)

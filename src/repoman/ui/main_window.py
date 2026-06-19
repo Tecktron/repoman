@@ -394,65 +394,93 @@ class RepomanWindow(Gtk.ApplicationWindow):
     # ------------------------------------------------------------------
 
     def _show_shortcuts(self) -> None:
-        builder = Gtk.Builder()
-        builder.add_from_string(_SHORTCUTS_UI)
-        window = builder.get_object("shortcuts_window")
-        window.set_transient_for(self)
-        window.present()
+        win = Gtk.Window(
+            title="Keyboard Shortcuts",
+            transient_for=self,
+            modal=True,
+            default_width=420,
+            resizable=False,
+        )
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            margin_top=24,
+            margin_bottom=24,
+            margin_start=24,
+            margin_end=24,
+            spacing=12,
+        )
+        group = Adw.PreferencesGroup(title="Repoman")
+        for label, accel in [
+            ("Search repositories", "<Primary>f"),
+            ("Open upgrade assistant", "<Primary>u"),
+            ("Keyboard shortcuts", "<Primary>F1"),
+        ]:
+            row = Adw.ActionRow(title=label)
+            row.add_suffix(Gtk.ShortcutLabel(accelerator=accel))
+            group.add(row)
+        box.append(group)
+        win.set_child(box)
+        win.present()
 
     def _open_help(self) -> None:
         Gtk.show_uri(self, "https://github.com/Tecktron/repoman", 0)
 
     def _show_about(self) -> None:
-        about = Gtk.AboutDialog(
+        win = Gtk.Window(
+            title="About Repoman",
             transient_for=self,
             modal=True,
-            program_name="repoman",
-            logo_icon_name="io.github.Tecktron.repoman",
-            version="0.1.0",
-            website="https://github.com/Tecktron/repoman",
-            website_label="GitHub",
-            license_type=Gtk.License.GPL_3_0,
-            comments="GTK4 APT repository manager for Ubuntu/Xubuntu.\n"
-            "Helps you review and re-enable third-party repos after an Ubuntu upgrade.",
-            authors=["Tecktron"],
+            default_width=360,
+            resizable=False,
         )
-        about.present()
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            margin_top=24,
+            margin_bottom=24,
+            margin_start=24,
+            margin_end=24,
+            spacing=16,
+        )
 
+        # Icon + name + version
+        header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, halign=Gtk.Align.CENTER)
+        icon = Gtk.Image.new_from_icon_name("io.github.Tecktron.repoman")
+        icon.set_pixel_size(64)
+        header_box.append(icon)
+        name_label = Gtk.Label(label="Repoman")
+        name_label.add_css_class("title-1")
+        header_box.append(name_label)
+        header_box.append(Gtk.Label(label="Version 0.1.0", css_classes=["dim-label"]))
+        box.append(header_box)
 
-_SHORTCUTS_UI = """
-<?xml version="1.0" encoding="UTF-8"?>
-<interface>
-  <object class="GtkShortcutsWindow" id="shortcuts_window">
-    <property name="modal">true</property>
-    <child>
-      <object class="GtkShortcutsSection">
-        <property name="title">repoman</property>
-        <child>
-          <object class="GtkShortcutsGroup">
-            <property name="title">General</property>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="title">Search repositories</property>
-                <property name="accelerator">&lt;ctrl&gt;f</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="title">Open upgrade assistant</property>
-                <property name="accelerator">&lt;ctrl&gt;u</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="title">Keyboard shortcuts</property>
-                <property name="accelerator">&lt;ctrl&gt;F1</property>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-  </object>
-</interface>
-"""
+        box.append(Gtk.Separator())
+
+        # Info group
+        info_group = Adw.PreferencesGroup()
+        desc_row = Adw.ActionRow(
+            title="Description",
+            subtitle="GTK4 APT repository manager for Ubuntu/Xubuntu. "
+            "Helps you review and re-enable third-party repos after an upgrade.",
+        )
+        desc_row.set_subtitle_selectable(True)
+        info_group.add(desc_row)
+
+        author_row = Adw.ActionRow(title="Author", subtitle="Tecktron")
+        info_group.add(author_row)
+
+        license_row = Adw.ActionRow(title="License", subtitle="GNU General Public License v3.0")
+        info_group.add(license_row)
+
+        gh_row = Adw.ActionRow(title="Source code", subtitle="github.com/Tecktron/repoman")
+        gh_row.set_subtitle_selectable(True)
+        gh_btn = Gtk.Button.new_from_icon_name("applications-internet-symbolic")
+        gh_btn.set_tooltip_text("Open on GitHub")
+        gh_btn.add_css_class("flat")
+        gh_btn.set_valign(Gtk.Align.CENTER)
+        gh_btn.connect("clicked", lambda _: Gtk.show_uri(win, "https://github.com/Tecktron/repoman", 0))
+        gh_row.add_suffix(gh_btn)
+        info_group.add(gh_row)
+
+        box.append(info_group)
+        win.set_child(box)
+        win.present()

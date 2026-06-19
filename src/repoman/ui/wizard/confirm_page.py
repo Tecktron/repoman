@@ -65,7 +65,7 @@ class ConfirmChangesPage(RepomanWizardPage):
             title="Administrator password required",
             subtitle="Writes to /etc/apt/sources.list.d/",
         )
-        auth_row.add_prefix(Gtk.Image.new_from_icon_name("system-lock-screen-symbolic"))
+        auth_row.add_prefix(Gtk.Image.new_from_icon_name("dialog-password-symbolic"))
         auth_group.add(auth_row)
         self._content_box.append(auth_group)
 
