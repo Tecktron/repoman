@@ -16,6 +16,7 @@ from ..parser import Parser
 from ..paths import PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
 from ..utils import repos_needing_attention
 from .detail_pane import DetailPane
+from .position import center_on_parent, center_on_screen
 from .repo_row import RepoRow
 from .wizard.dialog import RepomanWizardDialog
 
@@ -45,6 +46,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
         self._build_ui()
         self.connect("realize", self._on_realize)
+        center_on_screen(self)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -131,6 +133,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         # Tools
         tools = Gio.Menu()
         tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
+        tools.append("Check pre-update compatibility…", "win.compat-check")
         tools.append("Disable All Third-Party Repos…", "win.disable-all-repos")
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
@@ -153,6 +156,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         # Standard actions
         for name, callback in [
             ("upgrade-wizard", self.open_upgrade_wizard),
+            ("compat-check", self._open_compat_checker),
             ("show-shortcuts", self._show_shortcuts),
             ("open-help", self._open_help),
             ("about", self._show_about),
@@ -356,6 +360,12 @@ class RepomanWindow(Gtk.ApplicationWindow):
     # Wizard
     # ------------------------------------------------------------------
 
+    def _open_compat_checker(self) -> None:
+        from .compat_checker import CompatCheckerWindow
+
+        win = CompatCheckerWindow(repos=self._repos, parent=self)
+        win.present()
+
     def open_upgrade_wizard(self) -> None:
         if self._wizard is not None:
             self._wizard.present()
@@ -402,6 +412,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_width=420,
             resizable=False,
         )
+        center_on_parent(win)
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             margin_top=24,
@@ -434,6 +445,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_width=360,
             resizable=False,
         )
+        center_on_parent(win)
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             margin_top=24,
