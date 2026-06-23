@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 import gi
 
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk
+
+_log = logging.getLogger(__name__)
 
 
 def center_on_screen(window: Gtk.Window) -> None:
@@ -45,8 +49,8 @@ def _center_on_screen_cb(window: Gtk.Window) -> bool:
         x = geom.x + (geom.width - win_w) // 2
         y = geom.y + (geom.height - win_h) // 2
         _move(surface, x, y)
-    except Exception:  # noqa: S110
-        pass
+    except Exception:
+        _log.debug("center_on_screen failed", exc_info=True)
     return GLib.SOURCE_REMOVE
 
 
@@ -67,8 +71,8 @@ def _center_on_parent_cb(window: Gtk.Window) -> bool:
         x = px + (parent.get_width() - win_w) // 2
         y = py + (parent.get_height() - win_h) // 2
         _move(surface, x, y)
-    except Exception:  # noqa: S110
-        pass
+    except Exception:
+        _log.debug("center_on_parent failed", exc_info=True)
     return GLib.SOURCE_REMOVE
 
 
@@ -85,8 +89,8 @@ def _xid(surface) -> int | None:
 
         if isinstance(surface, GdkX11.X11Surface):
             return int(surface.get_xid())
-    except Exception:  # noqa: S110
-        pass
+    except Exception:
+        _log.debug("failed to get X11 window ID", exc_info=True)
     return None
 
 
@@ -104,6 +108,7 @@ def _screen_pos(surface) -> tuple[int | None, int | None]:
         d.close()
         return trans.x, trans.y
     except Exception:
+        _log.debug("failed to get screen position for xid=%s", xid, exc_info=True)
         return None, None
 
 
@@ -119,5 +124,5 @@ def _move(surface, x: int, y: int) -> None:
         d.create_resource_object("window", xid).configure(x=x, y=y)
         d.sync()
         d.close()
-    except Exception:  # noqa: S110
-        pass
+    except Exception:
+        _log.debug("failed to move xid=%s to (%s, %s)", xid, x, y, exc_info=True)

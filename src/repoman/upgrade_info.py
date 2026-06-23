@@ -32,7 +32,7 @@ def get_upgrade_prompt() -> str:
     try:
         config.read(_RELEASE_UPGRADES_PATH)
         return config.get("DEFAULT", "Prompt", fallback="lts").lower()
-    except Exception:
+    except configparser.Error:
         return "lts"
 
 
