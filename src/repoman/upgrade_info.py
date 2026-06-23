@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import csv
 import platform
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .models import AvailabilityStatus
 _RELEASE_UPGRADES_PATH = Path("/etc/update-manager/release-upgrades")
 _DISTRO_INFO_CSV = Path("/usr/share/distro-info/ubuntu.csv")
 _PPA_URL_TEMPLATE = "https://ppa.launchpadcontent.net/{owner}/{ppa}/ubuntu/dists/{codename}/InRelease"
+_DISTS_URL_TEMPLATE = "https://ppa.launchpadcontent.net/{owner}/{ppa}/ubuntu/dists/"
 
 
 def get_current_codename_and_display() -> tuple[str, str]:
@@ -84,6 +86,35 @@ def get_upgrade_targets(current_codename: str, prompt: str) -> list[tuple[str, s
     if prompt == "lts":
         newer = [r for r in newer if r["is_lts"]]
     return [(r["series"], f"{r['series']} ({r['version']})") for r in newer]
+
+
+def get_all_known_codenames() -> list[str]:
+    """Return all known Ubuntu codenames in release-date order (oldest first)."""
+    return [r["series"] for r in _parse_ubuntu_csv()]
+
+
+def get_ppa_suites(owner: str, ppa: str, *, timeout: int = 10) -> tuple[frozenset[str] | None, str | None]:
+    """Return all Ubuntu suite names published by a Launchpad PPA.
+
+    Fetches the dists/ directory listing in a single GET request.
+    Returns (frozenset_of_codenames, None) on success,
+    (frozenset(), None) on 404 (PPA exists but no packages),
+    (None, error_str) on network failure.
+    """
+    url = _DISTS_URL_TEMPLATE.format(owner=owner, ppa=ppa)
+    try:
+        resp = requests.get(url, timeout=timeout)
+        if resp.status_code == 404:
+            return frozenset(), None
+        if resp.status_code != 200:
+            return None, f"HTTP {resp.status_code} from {url}"
+        return frozenset(re.findall(r'href="([^/"]+)/"', resp.text)), None
+    except requests.exceptions.Timeout:
+        return None, f"Connection timed out checking {url}"
+    except requests.exceptions.ConnectionError as exc:
+        return None, str(exc)
+    except requests.exceptions.RequestException as exc:
+        return None, str(exc)
 
 
 def check_ppa_for_codename(

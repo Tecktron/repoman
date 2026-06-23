@@ -10,8 +10,9 @@ from gi.repository import Adw, GLib, Gtk
 
 from ..models import AvailabilityStatus, Repository
 from ..upgrade_info import (
-    check_ppa_for_codename,
+    get_all_known_codenames,
     get_current_codename_and_display,
+    get_ppa_suites,
     get_upgrade_prompt,
     get_upgrade_targets,
 )
@@ -44,6 +45,8 @@ class CompatCheckerWindow(Gtk.Window):
         self._network_error: str | None = None
         self._row_widgets: dict[int, tuple[Adw.ActionRow, Gtk.Widget]] = {}
         self._target_codename: str = ""
+        self._current_codename: str = ""
+        self._ordered_codenames: list[str] = []
         self._ppa_group: Adw.PreferencesGroup | None = None
 
         center_on_parent(self)
@@ -133,6 +136,8 @@ class CompatCheckerWindow(Gtk.Window):
 
     def _load_system_info(self) -> bool:
         codename, display = get_current_codename_and_display()
+        self._current_codename = codename
+        self._ordered_codenames = get_all_known_codenames()
         self._current_row.set_subtitle(display)
 
         prompt = get_upgrade_prompt()
@@ -238,17 +243,35 @@ class CompatCheckerWindow(Gtk.Window):
     def _run_checks(self, target_codename: str) -> None:
         for repo in self._ppa_repos:
             if not repo.ppa_owner or not repo.ppa_name:
-                status, error = AvailabilityStatus.UNKNOWN, "Could not parse PPA from URI"
+                GLib.idle_add(
+                    self._on_row_checked,
+                    repo,
+                    AvailabilityStatus.UNKNOWN,
+                    "Could not parse PPA from URI",
+                    None,
+                )
+                continue
+            suites, error = get_ppa_suites(repo.ppa_owner, repo.ppa_name)
+            if suites is None:
+                status = AvailabilityStatus.UNKNOWN
+            elif target_codename in suites:
+                status = AvailabilityStatus.AVAILABLE
             else:
-                status, error = check_ppa_for_codename(repo.ppa_owner, repo.ppa_name, target_codename)
-            GLib.idle_add(self._on_row_checked, repo, status, error)
+                status = AvailabilityStatus.UNAVAILABLE
+            GLib.idle_add(self._on_row_checked, repo, status, error, suites)
 
-    def _on_row_checked(self, repo: Repository, status: AvailabilityStatus, error: str | None) -> bool:
+    def _on_row_checked(
+        self,
+        repo: Repository,
+        status: AvailabilityStatus,
+        error: str | None,
+        suites: frozenset[str] | None,
+    ) -> bool:
         row_widget = self._row_widgets.get(id(repo))
         if row_widget is not None:
             row, spinner = row_widget
             row.remove(spinner)
-            row.add_suffix(self._make_status_button(repo, status, error, self._target_codename))
+            row.add_suffix(self._make_status_button(repo, status, error, self._target_codename, suites))
 
         if error and not self._network_error:
             self._network_error = error
@@ -264,6 +287,7 @@ class CompatCheckerWindow(Gtk.Window):
         status: AvailabilityStatus,
         error: str | None,
         target_codename: str,
+        suites: frozenset[str] | None,
     ) -> Gtk.Button:
         """Clickable status icon that opens a detail popover."""
         icon_name, css = {
@@ -280,7 +304,7 @@ class CompatCheckerWindow(Gtk.Window):
         btn.add_css_class("flat")
         btn.add_css_class("circular")
 
-        popover = Gtk.Popover(child=self._make_popover_content(repo, status, error, target_codename))
+        popover = Gtk.Popover(child=self._make_popover_content(repo, status, error, target_codename, suites))
         popover.set_parent(btn)
         btn.connect("clicked", lambda _: popover.popup())
         return btn
@@ -291,6 +315,7 @@ class CompatCheckerWindow(Gtk.Window):
         status: AvailabilityStatus,
         error: str | None,
         target_codename: str,
+        suites: frozenset[str] | None,
     ) -> Gtk.Box:
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
@@ -322,6 +347,25 @@ class CompatCheckerWindow(Gtk.Window):
             f"Checking for:  {target_codename}",
         ):
             lbl = Gtk.Label(label=label_text, xalign=0, css_classes=["dim-label", "caption"])
+            box.append(lbl)
+
+        # Enrichment for UNAVAILABLE: show latest known available suite
+        if status == AvailabilityStatus.UNAVAILABLE and suites is not None:
+            known_available = [c for c in self._ordered_codenames if c in suites]
+            if known_available:
+                latest = known_available[-1]
+                try:
+                    current_idx = self._ordered_codenames.index(self._current_codename)
+                    latest_idx = self._ordered_codenames.index(latest)
+                    if latest_idx > current_idx:
+                        detail = f"Latest available: {latest} — PPA is maintained, {target_codename} support may follow"
+                    else:
+                        detail = f"Last seen: {latest} — PPA may no longer be maintained"
+                except ValueError:
+                    detail = f"Latest available: {latest}"
+            else:
+                detail = "No packages found for any Ubuntu release"
+            lbl = Gtk.Label(label=detail, xalign=0, wrap=True, max_width_chars=36, css_classes=["dim-label", "caption"])
             box.append(lbl)
 
         # Launchpad link

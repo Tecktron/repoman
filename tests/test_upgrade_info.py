@@ -266,3 +266,57 @@ class TestCheckPpaForCodename:
         status, error = upgrade_info.check_ppa_for_codename("testowner", "testppa", "noble")
         assert error is not None
         assert len(error) > 0
+
+
+_DISTS_HTML = (
+    '<html><body><a href="noble/">noble/</a><a href="jammy/">jammy/</a><a href="focal/">focal/</a></body></html>'
+)
+
+
+class TestGetPpaSuites:
+    def test_returns_suites_on_200(self, mocker):
+        mock_get = mocker.patch("repoman.upgrade_info.requests.get")
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = _DISTS_HTML
+        suites, error = upgrade_info.get_ppa_suites("testowner", "testppa")
+        assert suites == frozenset({"noble", "jammy", "focal"})
+        assert error is None
+
+    def test_returns_empty_frozenset_on_404(self, mocker):
+        mock_get = mocker.patch("repoman.upgrade_info.requests.get")
+        mock_get.return_value.status_code = 404
+        suites, error = upgrade_info.get_ppa_suites("testowner", "testppa")
+        assert suites == frozenset()
+        assert error is None
+
+    def test_returns_none_on_other_status(self, mocker):
+        mock_get = mocker.patch("repoman.upgrade_info.requests.get")
+        mock_get.return_value.status_code = 403
+        suites, error = upgrade_info.get_ppa_suites("testowner", "testppa")
+        assert suites is None
+        assert error is not None
+
+    def test_returns_none_on_timeout(self, mocker):
+        mocker.patch(
+            "repoman.upgrade_info.requests.get",
+            side_effect=requests.exceptions.Timeout(),
+        )
+        suites, error = upgrade_info.get_ppa_suites("testowner", "testppa")
+        assert suites is None
+        assert error is not None
+
+    def test_returns_none_on_connection_error(self, mocker):
+        mocker.patch(
+            "repoman.upgrade_info.requests.get",
+            side_effect=requests.exceptions.ConnectionError("DNS failure"),
+        )
+        suites, error = upgrade_info.get_ppa_suites("testowner", "testppa")
+        assert suites is None
+        assert "DNS failure" in error
+
+    def test_correct_url_constructed(self, mocker):
+        mock_get = mocker.patch("repoman.upgrade_info.requests.get")
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.text = _DISTS_HTML
+        upgrade_info.get_ppa_suites("myowner", "myppa")
+        assert mock_get.call_args[0][0] == ("https://ppa.launchpadcontent.net/myowner/myppa/ubuntu/dists/")
