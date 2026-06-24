@@ -19,6 +19,24 @@ from ..upgrade_info import (
 from .position import center_on_parent
 
 
+def _clear_label_selections(popover: Gtk.Popover) -> None:
+    """Popover 'show' handler: defer-clear the auto-selection GTK applies on focus."""
+
+    def _do_clear() -> bool:
+        stack = [popover.get_child()]
+        while stack:
+            w = stack.pop()
+            if isinstance(w, Gtk.Label) and w.get_selectable():
+                w.select_region(0, 0)
+            child = w.get_first_child() if hasattr(w, "get_first_child") else None
+            while child:
+                stack.append(child)
+                child = child.get_next_sibling()
+        return GLib.SOURCE_REMOVE
+
+    GLib.idle_add(_do_clear)
+
+
 class CompatCheckerWindow(Gtk.Window):
     """
     Modal window for checking pre-update PPA compatibility.
@@ -288,7 +306,7 @@ class CompatCheckerWindow(Gtk.Window):
         error: str | None,
         target_codename: str,
         suites: frozenset[str] | None,
-    ) -> Gtk.Button:
+    ) -> Gtk.MenuButton:
         """Clickable status icon that opens a detail popover."""
         icon_name, css = {
             AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
@@ -299,14 +317,16 @@ class CompatCheckerWindow(Gtk.Window):
         if css:
             icon.add_css_class(css)
 
-        btn = Gtk.Button(valign=Gtk.Align.CENTER)
+        btn = Gtk.MenuButton(valign=Gtk.Align.CENTER)
         btn.set_child(icon)
         btn.add_css_class("flat")
         btn.add_css_class("circular")
 
-        popover = Gtk.Popover(child=self._make_popover_content(repo, status, error, target_codename, suites))
-        popover.set_parent(btn)
-        btn.connect("clicked", lambda _: popover.popup())
+        content = self._make_popover_content(repo, status, error, target_codename, suites)
+        popover = Gtk.Popover(child=content)
+        popover.connect("show", _clear_label_selections)
+        btn.set_popover(popover)
+
         return btn
 
     def _make_popover_content(
@@ -346,7 +366,7 @@ class CompatCheckerWindow(Gtk.Window):
             f"Current suite:  {current_suite}",
             f"Checking for:  {target_codename}",
         ):
-            lbl = Gtk.Label(label=label_text, xalign=0, css_classes=["dim-label", "caption"])
+            lbl = Gtk.Label(label=label_text, xalign=0, selectable=True, css_classes=["caption"])
             box.append(lbl)
 
         # Enrichment for UNAVAILABLE: show latest known available suite
@@ -358,14 +378,16 @@ class CompatCheckerWindow(Gtk.Window):
                     current_idx = self._ordered_codenames.index(self._current_codename)
                     latest_idx = self._ordered_codenames.index(latest)
                     if latest_idx > current_idx:
-                        detail = f"Latest available: {latest} — PPA is maintained, {target_codename} support may follow"
+                        detail = f"Latest available: {latest}"
                     else:
-                        detail = f"Last seen: {latest} — PPA may no longer be maintained"
+                        detail = f"Last available: {latest}"
                 except ValueError:
                     detail = f"Latest available: {latest}"
             else:
                 detail = "No packages found for any Ubuntu release"
-            lbl = Gtk.Label(label=detail, xalign=0, wrap=True, max_width_chars=36, css_classes=["dim-label", "caption"])
+            lbl = Gtk.Label(
+                label=detail, xalign=0, wrap=True, max_width_chars=36, selectable=True, css_classes=["caption"]
+            )
             box.append(lbl)
 
         # Launchpad link
