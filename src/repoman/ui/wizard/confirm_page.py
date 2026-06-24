@@ -34,24 +34,30 @@ class ConfirmChangesPage(RepomanWizardPage):
             **kwargs,
         )
         self._to_apply = [r for r in self._state.selected if r.availability != AvailabilityStatus.UNAVAILABLE]
+        if not self._to_apply:
+            self._next_button.set_label("Done")
         self._build_ui()
 
     def can_proceed(self) -> bool:
-        return bool(self._to_apply)
+        return True
 
     def _on_proceed(self) -> None:
+        if not self._to_apply:
+            self.get_root().close()
+            return
         self._next_button.set_sensitive(False)
         self._next_button.set_label("Applying…")
         threading.Thread(target=self._apply, daemon=True).start()
 
     def _build_ui(self) -> None:
-        will_apply_group = Adw.PreferencesGroup(
-            title="Will be re-enabled",
-            description=f"Suite field updated to {self._state.target_codename}",
-        )
-        for repo in self._to_apply:
-            will_apply_group.add(self._make_row(repo, success=True))
-        self._content_box.append(will_apply_group)
+        if self._to_apply:
+            will_apply_group = Adw.PreferencesGroup(
+                title="Will be re-enabled",
+                description=f"Suite field updated to {self._state.target_codename}",
+            )
+            for repo in self._to_apply:
+                will_apply_group.add(self._make_row(repo, success=True))
+            self._content_box.append(will_apply_group)
 
         skipped = [r for r in self._state.selected if r.availability == AvailabilityStatus.UNAVAILABLE]
         if skipped:
@@ -60,23 +66,26 @@ class ConfirmChangesPage(RepomanWizardPage):
                 skipped_group.add(self._make_row(repo, success=False))
             self._content_box.append(skipped_group)
 
-        auth_group = Adw.PreferencesGroup()
-        auth_row = Adw.ActionRow(
-            title="Administrator password required",
-            subtitle="Writes to /etc/apt/sources.list.d/",
-        )
-        auth_row.add_prefix(Gtk.Image.new_from_icon_name("dialog-password-symbolic"))
-        auth_group.add(auth_row)
-        self._content_box.append(auth_group)
+        if self._to_apply:
+            auth_group = Adw.PreferencesGroup()
+            auth_row = Adw.ActionRow(
+                title="Administrator password required",
+                subtitle="Writes to /etc/apt/sources.list.d/",
+            )
+            auth_row.add_prefix(Gtk.Image.new_from_icon_name("dialog-password-symbolic"))
+            auth_group.add(auth_row)
+            self._content_box.append(auth_group)
 
-    @staticmethod
-    def _make_row(repo: Repository, *, success: bool) -> Adw.ActionRow:
+    def _make_row(self, repo: Repository, *, success: bool) -> Adw.ActionRow:
         row = Adw.ActionRow(
             title=repo.display_name,
             subtitle=repo.uris[0] if repo.uris else "",
         )
         icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic" if success else "dialog-warning-symbolic")
         icon.add_css_class("success" if success else "warning")
+        icon.set_tooltip_text(
+            f"Will be re-enabled for {self._state.target_codename}" if success else "Not yet available — skipped"
+        )
         row.add_suffix(icon)
         return row
 

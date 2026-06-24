@@ -33,6 +33,7 @@ class CheckAvailabilityPage(RepomanWizardPage):
         self._checker = Checker()
         self._row_widgets: dict[int, tuple[Adw.ActionRow, Gtk.Spinner]] = {}
         self._pending = len(self._state.selected)
+        self._checks_started = False
         self._next_button.set_sensitive(False)
         self._build_ui()
 
@@ -40,6 +41,9 @@ class CheckAvailabilityPage(RepomanWizardPage):
         return self._pending == 0
 
     def _on_shown(self) -> None:
+        if self._checks_started:
+            return
+        self._checks_started = True
         threading.Thread(target=self._run_checks, daemon=True).start()
 
     def _on_proceed(self) -> None:
@@ -84,6 +88,12 @@ class CheckAvailabilityPage(RepomanWizardPage):
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
             icon.add_css_class(css)
+        tooltip = {
+            AvailabilityStatus.AVAILABLE: f"Available for {self._state.target_codename}",
+            AvailabilityStatus.UNAVAILABLE: f"Not yet available for {self._state.target_codename}",
+            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic — always compatible",
+        }.get(status, "Could not determine availability")
+        icon.set_tooltip_text(tooltip)
         row.add_suffix(icon)
         self._pending -= 1
         if self._pending == 0:
