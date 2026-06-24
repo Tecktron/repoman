@@ -1,0 +1,87 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+from .models import FileFormat, Repository
+
+
+def save_config(repos: list[Repository]) -> str:
+    """Serialise repo list to a JSON string for writing to a .repoman file."""
+    return json.dumps(
+        {
+            "version": 1,
+            "saved_at": datetime.now().isoformat(timespec="seconds"),
+            "repos": [
+                {
+                    "types": r.types,
+                    "uris": r.uris,
+                    "suites": r.suites,
+                    "components": r.components,
+                    "enabled": r.enabled,
+                    "description": r.description,
+                    "signed_by": r.signed_by,
+                    "source_file": str(r.source_file),
+                }
+                for r in repos
+            ],
+        },
+        indent=2,
+    )
+
+
+def load_config(path: Path) -> list[dict]:
+    """Parse a .repoman JSON file.
+
+    Raises:
+        json.JSONDecodeError: file is not valid JSON
+        ValueError: version field is missing or unsupported
+        KeyError: required top-level key missing
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("version") != 1:
+        raise ValueError(f"Unsupported config version: {data.get('version')!r}")
+    return data["repos"]
+
+
+def match_repos(
+    saved: list[dict],
+    live: list[Repository],
+) -> tuple[list[tuple[dict, Repository]], list[dict]]:
+    """Match saved config entries to live repos by primary URI.
+
+    Returns:
+        matched — [(saved_entry, live_repo), ...] for repos found on the system
+        missing — saved entries whose URI was not found on the system
+    """
+    live_by_uri = {r.uris[0]: r for r in live if r.uris}
+    matched: list[tuple[dict, Repository]] = []
+    missing: list[dict] = []
+    for entry in saved:
+        uris = entry.get("uris") or []
+        uri = uris[0] if uris else None
+        if uri and uri in live_by_uri:
+            matched.append((entry, live_by_uri[uri]))
+        else:
+            missing.append(entry)
+    return matched, missing
+
+
+def entry_to_repository(entry: dict) -> Repository:
+    """Reconstruct a Repository from a saved config entry.
+
+    Used when creating repos that exist in the config but not on the system.
+    Always produces DEB822 format; source_file is taken from the saved entry.
+    """
+    return Repository(
+        source_file=Path(entry["source_file"]),
+        file_format=FileFormat.DEB822,
+        types=entry.get("types") or ["deb"],
+        uris=entry["uris"],
+        suites=entry.get("suites") or [],
+        components=entry.get("components") or [],
+        enabled=entry.get("enabled", True),
+        description=entry.get("description"),
+        signed_by=entry.get("signed_by"),
+    )

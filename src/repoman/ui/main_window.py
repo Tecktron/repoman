@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import threading
 from pathlib import Path
@@ -134,6 +135,10 @@ class RepomanWindow(Gtk.ApplicationWindow):
         tools = Gio.Menu()
         tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
         tools.append("Check pre-update compatibility…", "win.compat-check")
+        state_mgmt = Gio.Menu()
+        state_mgmt.append("Save…", "win.save-config")
+        state_mgmt.append("Load…", "win.load-config")
+        tools.append_submenu("State Management", state_mgmt)
         tools.append("Disable All Third-Party Repos…", "win.disable-all-repos")
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
@@ -157,6 +162,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         for name, callback in [
             ("upgrade-wizard", self.open_upgrade_wizard),
             ("compat-check", self._open_compat_checker),
+            ("load-config", self._load_config),
             ("show-shortcuts", self._show_shortcuts),
             ("open-help", self._open_help),
             ("about", self._show_about),
@@ -164,6 +170,12 @@ class RepomanWindow(Gtk.ApplicationWindow):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, cb=callback: cb())
             self.add_action(action)
+
+        # Save-config action — disabled until repos have loaded
+        self._save_config_action = Gio.SimpleAction.new("save-config", None)
+        self._save_config_action.connect("activate", lambda _a, _p: self._save_config())
+        self._save_config_action.set_enabled(False)
+        self.add_action(self._save_config_action)
 
         # Disable-all action — sensitivity updated after repo load
         self._disable_all_action = Gio.SimpleAction.new("disable-all-repos", None)
@@ -226,6 +238,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             self._banner.set_revealed(True)
         else:
             self._banner.set_revealed(False)
+        self._save_config_action.set_enabled(bool(self._repos))
         self._disable_all_action.set_enabled(any(r.enabled for r in self._repos))
 
     # ------------------------------------------------------------------
@@ -256,8 +269,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     def _on_repo_toggled(self, _row: RepoRow, repo: Repository) -> None:
         """Quick enable/disable toggle — writes immediately via polkit."""
-        import json
-
         from ..writer import repo_to_deb822
 
         content = repo_to_deb822(repo)
@@ -311,8 +322,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
     def _on_disable_all_response(self, _dialog: Adw.AlertDialog, response: str) -> None:
         if response != "disable":
             return
-        import json
-
         from ..writer import repo_to_deb822
 
         to_disable = [r for r in self._repos if r.enabled]
@@ -399,6 +408,182 @@ class RepomanWindow(Gtk.ApplicationWindow):
                     timeout=6,
                 )
             )
+
+    # ------------------------------------------------------------------
+    # Save / Load config
+    # ------------------------------------------------------------------
+
+    def _save_config(self) -> None:
+        from datetime import date
+
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Save repository configuration")
+        dialog.set_initial_name(f"state-{date.today()}.repoman")
+        f = Gtk.FileFilter()
+        f.add_pattern("*.repoman")
+        f.set_name("Repoman configs (*.repoman)")
+        store = Gio.ListStore.new(Gtk.FileFilter)
+        store.append(f)
+        dialog.set_filters(store)
+        dialog.set_initial_folder(Gio.File.new_for_path(str(Path.home())))
+        dialog.save(self, None, self._on_save_config_chosen)
+
+    def _on_save_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
+        from .. import config_io
+
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return
+        path = Path(gfile.get_path())
+        if path.suffix != ".repoman":
+            path = path.with_suffix(".repoman")
+        try:
+            path.write_text(config_io.save_config(self._repos), encoding="utf-8")
+            self._toast_overlay.add_toast(Adw.Toast(title=f"Config saved to {path.name}", timeout=3))
+        except OSError as exc:
+            self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to save config: {exc}", timeout=5))
+
+    def _load_config(self) -> None:
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Load repository configuration")
+        f = Gtk.FileFilter()
+        f.add_pattern("*.repoman")
+        f.set_name("Repoman configs (*.repoman)")
+        store = Gio.ListStore.new(Gtk.FileFilter)
+        store.append(f)
+        dialog.set_filters(store)
+        dialog.open(self, None, self._on_load_config_chosen)
+
+    def _on_load_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
+        from .. import config_io
+
+        try:
+            gfile = dialog.open_finish(result)
+        except GLib.Error:
+            return
+        path = Path(gfile.get_path())
+        try:
+            saved = config_io.load_config(path)
+        except (json.JSONDecodeError, ValueError, OSError, KeyError) as exc:
+            self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to read config: {exc}", timeout=5))
+            return
+        self._apply_config_load(saved)
+
+    def _apply_config_load(self, saved: list[dict]) -> None:
+        from .. import config_io
+        from ..writer import repo_to_deb822
+
+        matched, missing = config_io.match_repos(saved, self._repos)
+
+        writes = []
+        changed_repos: list[tuple[Repository, bool]] = []
+        for entry, live in matched:
+            if entry.get("enabled") != live.enabled:
+                original = live.enabled
+                live.enabled = entry["enabled"]
+                writes.append({"path": str(live.source_file), "content": repo_to_deb822(live)})
+                changed_repos.append((live, original))
+
+        if writes:
+            payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
+
+            def _write() -> None:
+                result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+                if result.returncode == 0:
+                    GLib.idle_add(self._after_config_write_success, len(writes), missing)
+                else:
+                    GLib.idle_add(self._after_config_write_failure, result.stderr.strip(), changed_repos)
+
+            threading.Thread(target=_write, daemon=True).start()
+        else:
+            self._after_config_write_success(0, missing)
+
+    def _after_config_write_success(self, changed: int, missing: list[dict]) -> bool:
+        if changed:
+            self._on_repos_updated(None)
+            self._toast_overlay.add_toast(
+                Adw.Toast(
+                    title=f"Updated {changed} {'repository' if changed == 1 else 'repositories'}",
+                    timeout=3,
+                )
+            )
+        if missing:
+            self._show_missing_repos_dialog(missing)
+        elif changed == 0:
+            self._toast_overlay.add_toast(Adw.Toast(title="No changes — system already matches config", timeout=3))
+        return GLib.SOURCE_REMOVE
+
+    def _after_config_write_failure(self, message: str, changed_repos: list[tuple[Repository, bool]]) -> bool:
+        for live, original in changed_repos:
+            live.enabled = original
+        for row in self._rows:
+            row.refresh(row.repo)
+        self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to apply config: {message}", timeout=5))
+        return GLib.SOURCE_REMOVE
+
+    def _show_missing_repos_dialog(self, missing: list[dict]) -> None:
+        n = len(missing)
+        enabled_count = sum(1 for m in missing if m.get("enabled", True))
+        has_signed_by = any(m.get("signed_by") for m in missing)
+
+        body = (
+            f"{n} {'repository' if n == 1 else 'repositories'} from the config "
+            f"{'was' if n == 1 else 'were'} not found on this system."
+        )
+        if has_signed_by:
+            body += (
+                "\n\nSome of these repositories reference GPG signing keys that may not "
+                "be installed. You may need to add the keys manually after creating them."
+            )
+
+        dialog = Adw.AlertDialog.new(f"{n} {'repository' if n == 1 else 'repositories'} not found", body)
+        dialog.add_response("skip", "Skip")
+        if 0 < enabled_count < n:
+            dialog.add_response("enabled-only", f"Add {enabled_count} enabled")
+        dialog.add_response("all", f"Add all {n}")
+        dialog.set_default_response("skip")
+        dialog.set_close_response("skip")
+        dialog.connect("response", lambda _d, r: self._on_missing_response(r, missing))
+        dialog.present(self)
+
+    def _on_missing_response(self, response: str, missing: list[dict]) -> None:
+        from .. import config_io
+        from ..writer import repo_to_deb822
+
+        if response == "skip":
+            return
+        to_create = missing if response == "all" else [m for m in missing if m.get("enabled", True)]
+        if not to_create:
+            return
+
+        writes = []
+        for e in to_create:
+            repo = config_io.entry_to_repository(e)
+            writes.append({"path": str(repo.source_file), "content": repo_to_deb822(repo)})
+        payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
+
+        def _write() -> None:
+            result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+            if result.returncode == 0:
+                GLib.idle_add(self._on_missing_create_success, len(to_create))
+            else:
+                GLib.idle_add(
+                    self._toast_overlay.add_toast,
+                    Adw.Toast(title=f"Failed to create repositories: {result.stderr.strip()}", timeout=5),
+                )
+
+        threading.Thread(target=_write, daemon=True).start()
+
+    def _on_missing_create_success(self, count: int) -> bool:
+        self._on_repos_updated(None)
+        self._toast_overlay.add_toast(
+            Adw.Toast(
+                title=f"Created {count} {'repository' if count == 1 else 'repositories'}",
+                timeout=3,
+            )
+        )
+        return GLib.SOURCE_REMOVE
 
     # ------------------------------------------------------------------
     # Help / About
