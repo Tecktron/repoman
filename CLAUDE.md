@@ -30,7 +30,7 @@ python3 -m repoman.main
 
 ```bash
 cd /home/craig/Projects/repoman
-python3 -m pytest tests/ -q          # 110 tests, all must pass
+python3 -m pytest tests/ -q          # 134 tests, all must pass
 ruff check src/                       # linter
 ruff format --check src/              # formatter
 ```
@@ -59,11 +59,16 @@ src/repoman/
   paths.py           — shutil.which() for pkexec, lsb_release, update-manager,
                        software-properties-gtk; REPOMAN_HELPER_PATH env override;
                        check_required_tools()
+  config_io.py       — Save/load .repoman state files (pure, no GTK, fully tested):
+                       save_config() → JSON str; load_config() → list[dict];
+                       match_repos() → (matched, missing) by uris[0];
+                       entry_to_repository() reconstructs a Repository from a saved entry
 
   ui/
     main_window.py   — RepomanWindow (Gtk.Window); sidebar list + detail pane;
                        Adw.Banner for upgrade alert; search; disable-all; menu bar;
-                       wizard launch; compat checker launch; about/shortcuts windows
+                       wizard launch; compat checker launch; about/shortcuts windows;
+                       Tools → State Management → Save… / Load… (.repoman files)
     repo_row.py      — RepoRow (Adw.ActionRow); enable/disable switch prefix;
                        availability badge suffix; repo-toggled signal
     detail_pane.py   — DetailPane (Gtk.Box); edit description/suite/components/enabled;
@@ -79,11 +84,19 @@ src/repoman/
                        repos-updated and closing signals; _schedule_close() pattern
     base_page.py     — RepomanWizardPage (Adw.NavigationPage); _content_box, _next_button,
                        can_proceed(), _on_proceed(), refresh_proceed()
-    select_page.py   — Step 1: checkbox list, pre-ticks non-UNAVAILABLE repos
+    select_page.py   — Step 1: checkbox list, pre-ticks non-UNAVAILABLE repos;
+                       "Select all / Deselect all" button in group header suffix;
+                       UNKNOWN status shows dimmed question mark (not spinner —
+                       no checks run on Step 1)
     check_page.py    — Step 2: background Checker thread; spinner → icon per row;
-                       Next locked until all pending == 0
-    confirm_page.py  — Step 3: "Will be re-enabled" / "Skipped" groups; pkexec via
-                       subprocess.run(); toast on failure; on_complete callback on success
+                       Next locked until all pending == 0; _checks_started flag
+                       guards _on_shown() so back-navigation never re-runs checks
+                       or duplicates icons; icons have set_tooltip_text()
+    confirm_page.py  — Step 3: "Will be re-enabled" / "Skipped" groups (each hidden
+                       when empty); auth row hidden when nothing to apply; "Apply
+                       changes" relabelled "Done" and closes wizard when _to_apply
+                       is empty; icons have set_tooltip_text(); pkexec via
+                       subprocess.run(); toast on failure; on_complete on success
 
 polkit-helper        — Privileged write helper (run via pkexec).
                        Actions: enable_repos (patch Suites/Enabled in existing .sources),
@@ -107,8 +120,10 @@ Mutable runtime state: `availability` (default `UNKNOWN`).
 `display_name` property: description if set, else first URI.
 
 ### `AvailabilityStatus`
-- `UNKNOWN` — not yet checked (default)
-- `CHECKING` — spinner shown (wizard check_page)
+- `UNKNOWN` — not yet checked (default); shown as dimmed question mark on Step 1
+- `CHECKING` — reserved for in-progress state; spinner shown in wizard Step 2
+  while background thread runs (status transitions directly to AVAILABLE/UNAVAILABLE
+  when the check completes — CHECKING is never written back to the repo object)
 - `AVAILABLE` — confirmed for target release
 - `UNAVAILABLE` — confirmed not available
 - `SUITE_AGNOSTIC` — fixed suite name (stable, main, etc.) — never needs updating
@@ -154,7 +169,7 @@ The helper reads JSON from stdin and exits 0 on success, 1 on error.
 }
 ```
 
-**`write_files`** — used by detail pane save and disable-all:
+**`write_files`** — used by detail pane save, disable-all, and state load:
 ```json
 {
   "action": "write_files",
@@ -163,7 +178,8 @@ The helper reads JSON from stdin and exits 0 on success, 1 on error.
 }
 ```
 Deletes happen after all writes succeed. Used for `.list` → `.sources` conversion
-(write new `.sources`, delete old `.list` in one polkit prompt).
+(write new `.sources`, delete old `.list` in one polkit prompt). Also used by
+the state load feature to apply enabled/disabled changes and create missing repos.
 
 The helper is located via `REPOMAN_HELPER_PATH` env var (dev) or
 `/usr/lib/repoman/polkit-helper` (installed). Set the env var when running from source.
@@ -307,6 +323,45 @@ release it was last (or most recently) published for:
     hasn't published for target yet)
   - `latest_idx <= current_idx` → "Last available: {latest}" (PPA may be abandoned)
   - Empty intersection → "No packages found for any Ubuntu release"
+
+---
+
+## Save / Load state (`.repoman` files)
+
+**Tools → State Management → Save… / Load…**
+
+Save serialises `self._repos` to a JSON `.repoman` file (no polkit — written directly
+to wherever the user chooses via `Gtk.FileDialog`). Default filename: `state-{date}.repoman`.
+
+Load matches saved entries to live repos **by `uris[0]`** (stable across upgrades).
+Three outcomes per entry:
+- URI found, state differs → write via polkit `write_files`
+- URI found, state same → no-op
+- URI not found → "missing" list
+
+After polkit write succeeds, any missing repos are presented in an `Adw.AlertDialog`
+with three choices: Skip / Add N enabled / Add all N. "Create" fires another polkit
+`write_files` call. GPG/Signed-By warning shown in the dialog if any missing repo has
+a `signed_by` field.
+
+Polkit failure rolls back in-memory `enabled` state before refreshing rows.
+Repos on the system but absent from the file are left untouched.
+
+**File format (version 1):**
+```json
+{
+  "version": 1,
+  "saved_at": "2026-06-23T22:00:00",
+  "repos": [
+    {"types": ["deb"], "uris": ["https://..."], "suites": ["noble"],
+     "components": ["main"], "enabled": true,
+     "description": "...", "signed_by": "/path/to.gpg",
+     "source_file": "/etc/apt/sources.list.d/example.sources"}
+  ]
+}
+```
+
+`config_io.py` is pure (no GTK) with 24 unit tests in `tests/test_config_io.py`.
 
 ---
 
