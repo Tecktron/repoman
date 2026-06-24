@@ -35,6 +35,21 @@ class SelectReposPage(RepomanWizardPage):
     def can_proceed(self) -> bool:
         return any(cb.get_active() for _, cb in self._checks.values())
 
+    def _on_check_toggled(self) -> None:
+        self._update_select_all_btn()
+        self.refresh_proceed()
+
+    def _update_select_all_btn(self) -> None:
+        all_checked = all(cb.get_active() for _, cb in self._checks.values())
+        self._select_all_btn.set_label("Deselect all" if all_checked else "Select all")
+
+    def _on_select_all(self, _btn: Gtk.Button) -> None:
+        all_checked = all(cb.get_active() for _, cb in self._checks.values())
+        for _, cb in self._checks.values():
+            cb.set_active(not all_checked)
+        self._update_select_all_btn()
+        self.refresh_proceed()
+
     def _on_proceed(self) -> None:
         self._state.selected = [repo for repo, cb in self._checks.values() if cb.get_active()]
         from .check_page import CheckAvailabilityPage
@@ -50,7 +65,12 @@ class SelectReposPage(RepomanWizardPage):
         subtitle.add_css_class("dim-label")
         self._content_box.append(subtitle)
 
+        self._select_all_btn = Gtk.Button(valign=Gtk.Align.CENTER)
+        self._select_all_btn.add_css_class("flat")
+        self._select_all_btn.connect("clicked", self._on_select_all)
+
         group = Adw.PreferencesGroup()
+        group.set_header_suffix(self._select_all_btn)
         self._content_box.append(group)
 
         for repo in self._state.candidate_repos:
@@ -59,22 +79,22 @@ class SelectReposPage(RepomanWizardPage):
                 subtitle=repo.uris[0] if repo.uris else "",
             )
             check = Gtk.CheckButton(active=(repo.availability != AvailabilityStatus.UNAVAILABLE))
-            check.connect("toggled", lambda _cb: self.refresh_proceed())
+            check.connect("toggled", lambda _cb: self._on_check_toggled())
             row.add_prefix(check)
             row.set_activatable_widget(check)
             row.add_suffix(self._status_icon(repo))
             group.add(row)
             self._checks[id(repo)] = (repo, check)
 
+        self._update_select_all_btn()
+
     @staticmethod
     def _status_icon(repo: Repository) -> Gtk.Widget:
-        if repo.availability in (AvailabilityStatus.UNKNOWN, AvailabilityStatus.CHECKING):
-            return Gtk.Spinner(spinning=True)
         icon_name, css = {
             AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
             AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
             AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
-        }.get(repo.availability, ("dialog-question-symbolic", ""))
+        }.get(repo.availability, ("dialog-question-symbolic", "dim-label"))
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
             icon.add_css_class(css)
