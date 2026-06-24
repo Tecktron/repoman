@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import threading
+from datetime import date
 from pathlib import Path
 
 import gi
@@ -11,11 +12,13 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gio, GLib, Gtk
 
+from .. import config_io
 from ..checker import get_network_error, reset_network_state
 from ..models import Repository
 from ..parser import Parser
 from ..paths import PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
 from ..utils import repos_needing_attention
+from ..writer import repo_to_deb822
 from .detail_pane import DetailPane
 from .position import center_on_parent, center_on_screen
 from .repo_row import RepoRow
@@ -269,8 +272,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     def _on_repo_toggled(self, _row: RepoRow, repo: Repository) -> None:
         """Quick enable/disable toggle — writes immediately via polkit."""
-        from ..writer import repo_to_deb822
-
         content = repo_to_deb822(repo)
         payload = json.dumps(
             {
@@ -322,8 +323,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
     def _on_disable_all_response(self, _dialog: Adw.AlertDialog, response: str) -> None:
         if response != "disable":
             return
-        from ..writer import repo_to_deb822
-
         to_disable = [r for r in self._repos if r.enabled]
         for repo in to_disable:
             repo.enabled = False
@@ -349,7 +348,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         )
         return GLib.SOURCE_REMOVE
 
-    def _on_disable_all_failure(self, message: str, repos: list) -> bool:
+    def _on_disable_all_failure(self, message: str, repos: list[Repository]) -> bool:
         for repo in repos:
             repo.enabled = True
         for row in self._rows:
@@ -396,7 +395,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._wizard.connect("closing", lambda _: setattr(self, "_wizard", None))
         self._wizard.present()
 
-    def _on_repos_updated(self, _dialog: RepomanWizardDialog) -> None:
+    def _on_repos_updated(self, _dialog: RepomanWizardDialog | None = None) -> None:
         self._repos = self._parser.load_all()
         self._on_repos_loaded(self._repos)
 
@@ -414,8 +413,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
     # ------------------------------------------------------------------
 
     def _save_config(self) -> None:
-        from datetime import date
-
         dialog = Gtk.FileDialog.new()
         dialog.set_title("Save repository configuration")
         dialog.set_initial_name(f"state-{date.today()}.repoman")
@@ -429,8 +426,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dialog.save(self, None, self._on_save_config_chosen)
 
     def _on_save_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
-        from .. import config_io
-
         try:
             gfile = dialog.save_finish(result)
         except GLib.Error:
@@ -456,8 +451,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dialog.open(self, None, self._on_load_config_chosen)
 
     def _on_load_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
-        from .. import config_io
-
         try:
             gfile = dialog.open_finish(result)
         except GLib.Error:
@@ -471,9 +464,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._apply_config_load(saved)
 
     def _apply_config_load(self, saved: list[dict]) -> None:
-        from .. import config_io
-        from ..writer import repo_to_deb822
-
         matched, missing = config_io.match_repos(saved, self._repos)
 
         writes = []
@@ -501,7 +491,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     def _after_config_write_success(self, changed: int, missing: list[dict]) -> bool:
         if changed:
-            self._on_repos_updated(None)
+            self._on_repos_updated()
             self._toast_overlay.add_toast(
                 Adw.Toast(
                     title=f"Updated {changed} {'repository' if changed == 1 else 'repositories'}",
@@ -548,9 +538,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dialog.present(self)
 
     def _on_missing_response(self, response: str, missing: list[dict]) -> None:
-        from .. import config_io
-        from ..writer import repo_to_deb822
-
         if response == "skip":
             return
         to_create = missing if response == "all" else [m for m in missing if m.get("enabled", True)]
@@ -576,7 +563,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         threading.Thread(target=_write, daemon=True).start()
 
     def _on_missing_create_success(self, count: int) -> bool:
-        self._on_repos_updated(None)
+        self._on_repos_updated()
         self._toast_overlay.add_toast(
             Adw.Toast(
                 title=f"Created {count} {'repository' if count == 1 else 'repositories'}",

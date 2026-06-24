@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
+
 import requests
+
+_log = logging.getLogger(__name__)
 
 from .models import AvailabilityStatus, Repository
 
@@ -64,6 +68,7 @@ class Checker:
             # PPA or series not found
             return AvailabilityStatus.UNAVAILABLE
         except Exception as exc:
+            _log.debug("launchpad check failed for %s/%s", repo.ppa_owner, repo.ppa_name, exc_info=True)
             _network_failed = True
             _network_error_message = str(exc)
             return AvailabilityStatus.UNKNOWN

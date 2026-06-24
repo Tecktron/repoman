@@ -15,6 +15,8 @@ from .ui.main_window import RepomanWindow
 
 
 class RepomanApplication(Adw.Application):
+    """GTK4 APT repository manager application. Singleton — second launch activates the existing window."""
+
     def __init__(self, sources_dir: Path | None = None) -> None:
         super().__init__(
             application_id="io.github.Tecktron.repoman",

@@ -11,6 +11,40 @@ opens a new window in the existing process, not a new process.
 
 ---
 
+## Writing code — holistic file awareness
+
+Before finalising any change, take a pass over the **whole file**, not just
+the lines you touched. Catch these before they land:
+
+**Imports** — module-level by default. Before putting `from X import Y`
+inside a function body, check: is this symbol used (or likely to be used)
+anywhere else in the file? If yes, it belongs at the top. Inline imports
+are only justified to break circular dependencies, and that reason must be
+obvious from context.
+
+**DRY** — before writing a new helper, scan the file for something that
+already does it. A function that only delegates to one other function
+(`def foo(): return bar()`) is noise — collapse it.
+
+**Type hints** — be precise every time. `list` → `list[Repository]`.
+`T` → `T | None` when `None` is a valid argument or return value. When a
+parameter can be `None`, grep all call sites and make sure the hint matches
+reality before committing.
+
+**Broad exception handlers** — `except Exception` must always be paired
+with `_log.debug(…, exc_info=True)` on the very next line. No silent
+broad catches, ever.
+
+**Dead code** — if a code path has no callers, remove it. Dead code in
+security-sensitive helpers (polkit, setuid) is a liability, not a
+harmless placeholder.
+
+**Callers** — when changing a function signature, grep every call site
+and update them in the same diff. A type hint that contradicts how the
+function is actually called is worse than no hint.
+
+---
+
 ## Running the app
 
 ```bash

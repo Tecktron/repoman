@@ -104,6 +104,8 @@ def _deb822_leading_comments(text: str) -> list[str | None]:
 
 
 class Parser:
+    """Scans sources.list.d and parses DEB822 and one-line format repo files."""
+
     def __init__(self, sources_dir: Path = _SOURCES_DIR) -> None:
         self._sources_dir = sources_dir
         self._agnostic_names = _load_agnostic_names()

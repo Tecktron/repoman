@@ -45,8 +45,6 @@ def _apply_enable_repos(payload: dict) -> None:
             stanza["Suites"] = " ".join(entry["suites"])
         if "enabled" in entry:
             stanza["Enabled"] = "yes" if entry["enabled"] else "no"
-        if "description" in entry:
-            stanza["Description"] = entry["description"]
 
         new_content = str(stanza)
 

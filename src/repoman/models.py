@@ -21,6 +21,8 @@ class AvailabilityStatus(Enum):
 
 @dataclass
 class Repository:
+    """APT source entry parsed from a .sources or .list file."""
+
     source_file: Path
     file_format: FileFormat
     types: list[str]  # ["deb"] or ["deb", "deb-src"]
@@ -57,6 +59,8 @@ class Repository:
 
 @dataclass
 class WizardState:
+    """Shared state threaded through all upgrade wizard pages."""
+
     candidate_repos: list[Repository]
     target_codename: str
     selected: list[Repository] = field(default_factory=list)

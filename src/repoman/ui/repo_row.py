@@ -102,22 +102,18 @@ def _subtitle(repo: Repository) -> str:
     return repo.uris[0]
 
 
-def _availability_icon(status: AvailabilityStatus) -> Gtk.Widget | None:
+def _make_badge(status: AvailabilityStatus) -> Gtk.Widget | None:
+    """Return a status badge widget for the given availability, or None for UNKNOWN."""
     if status == AvailabilityStatus.UNKNOWN:
         return None
-    if status in (AvailabilityStatus.CHECKING,):
+    if status == AvailabilityStatus.CHECKING:
         return Gtk.Spinner(spinning=True)
-    mapping = {
+    icon_name, css = {
         AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
         AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
         AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
-    }
-    icon_name, css = mapping.get(status, ("dialog-question-symbolic", ""))
+    }.get(status, ("dialog-question-symbolic", ""))
     icon = Gtk.Image.new_from_icon_name(icon_name)
     if css:
         icon.add_css_class(css)
     return icon
-
-
-def _make_badge(status: AvailabilityStatus) -> Gtk.Widget | None:
-    return _availability_icon(status)
