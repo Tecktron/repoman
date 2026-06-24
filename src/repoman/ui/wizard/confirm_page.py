@@ -83,11 +83,23 @@ class ConfirmChangesPage(RepomanWizardPage):
         )
         icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic" if success else "dialog-warning-symbolic")
         icon.add_css_class("success" if success else "warning")
-        icon.set_tooltip_text(
-            f"Will be re-enabled for {self._state.target_codename}" if success else "Not yet available — skipped"
-        )
+        if not success:
+            tooltip = "Not yet available — skipped"
+        elif repo.availability == AvailabilityStatus.SUITE_AGNOSTIC:
+            tooltip = "Will be re-enabled (suite-agnostic — suite field unchanged)"
+        else:
+            tooltip = f"Will be re-enabled for {self._state.target_codename}"
+        icon.set_tooltip_text(tooltip)
         row.add_suffix(icon)
         return row
+
+    def _repo_payload(self, repo: Repository) -> dict:
+        """Build the enable_repos entry for one repo.
+        Suite-agnostic repos only get Enabled patched — their suite is left untouched."""
+        entry: dict = {"source_file": str(repo.source_file), "enabled": True}
+        if repo.availability != AvailabilityStatus.SUITE_AGNOSTIC:
+            entry["suites"] = [self._state.target_codename]
+        return entry
 
     def _apply(self) -> None:
         """Background thread. Calls pkexec — blocks until auth resolves."""
@@ -95,14 +107,7 @@ class ConfirmChangesPage(RepomanWizardPage):
             {
                 "action": "enable_repos",
                 "target_codename": self._state.target_codename,
-                "repos": [
-                    {
-                        "source_file": str(repo.source_file),
-                        "suites": [self._state.target_codename],
-                        "enabled": True,
-                    }
-                    for repo in self._to_apply
-                ],
+                "repos": [self._repo_payload(repo) for repo in self._to_apply],
             }
         )
         result = subprocess.run(

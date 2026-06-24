@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import subprocess
 
-from .models import Repository
+from .models import AvailabilityStatus, Repository
 from .paths import LSB_RELEASE
 
 
@@ -28,6 +28,8 @@ def repos_needing_attention(repos: list[Repository]) -> list[Repository]:
     for repo in repos:
         if not repo.enabled:
             flagged.append(repo)
+            continue
+        if repo.availability == AvailabilityStatus.SUITE_AGNOSTIC:
             continue
         for suite in repo.suites:
             is_release_codename = suite.isalpha() and suite.islower()

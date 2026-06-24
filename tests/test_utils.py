@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repoman import utils
-from repoman.models import FileFormat, Repository
+from repoman.models import AvailabilityStatus, FileFormat, Repository
 
 
 def _make_repo(enabled: bool = True, suites: list[str] | None = None) -> Repository:
@@ -56,22 +56,19 @@ class TestReposNeedingAttention:
         result = utils.repos_needing_attention(repos)
         assert result == []
 
-    def test_suite_agnostic_not_flagged(self, mocker):
+    def test_enabled_suite_agnostic_not_flagged(self, mocker):
         mocker.patch("repoman.utils.get_current_codename", return_value="noble")
         repo = _make_repo(suites=["stable"])
-        # Suite-agnostic suites don't match isalpha() + islower() for names with dashes,
-        # but "stable" does. Confirm: "stable" != "noble" but isalpha() is True.
-        # The spec says suite-agnostic repos are excluded. In utils, "stable" IS alpha+lower
-        # so it would be flagged if enabled and != current. But suite-agnostic repos
-        # are pre-filtered — the caller (main_window) passes only non-SUITE_AGNOSTIC repos.
-        # Here we test that SUITE_AGNOSTIC availability suppresses the flag via the
-        # AvailabilityStatus check — wait, utils.py doesn't check availability, just suites.
-        # So "stable" would be flagged if suite != current. That's correct — the parser
-        # marks them SUITE_AGNOSTIC and the main window filters them out before calling
-        # repos_needing_attention. Test that "stable" is treated as a release codename
-        # (alpha+lower) and would be flagged:
+        repo.availability = AvailabilityStatus.SUITE_AGNOSTIC
         result = utils.repos_needing_attention([repo])
-        assert repo in result  # "stable" != "noble" and is alpha+lower → flagged
+        assert result == []
+
+    def test_disabled_suite_agnostic_flagged(self, mocker):
+        mocker.patch("repoman.utils.get_current_codename", return_value="noble")
+        repo = _make_repo(enabled=False, suites=["stable"])
+        repo.availability = AvailabilityStatus.SUITE_AGNOSTIC
+        result = utils.repos_needing_attention([repo])
+        assert repo in result
 
     def test_non_alpha_suite_not_flagged(self, mocker):
         mocker.patch("repoman.utils.get_current_codename", return_value="noble")
