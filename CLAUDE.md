@@ -58,8 +58,6 @@ REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
 python3 -m repoman.main
 ```
 
-`--sources-dir <DIR>` skips `/etc/apt/sources.list.d/` for isolated testing.
-
 ## Tests
 
 ```bash

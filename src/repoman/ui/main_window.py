@@ -36,14 +36,14 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     __gtype_name__ = "RepomanWindow"
 
-    def __init__(self, sources_dir: Path | None = None, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(
             title="Repoman",
             default_width=900,
             default_height=600,
             **kwargs,
         )
-        self._parser = Parser(sources_dir=sources_dir) if sources_dir else Parser()
+        self._parser = Parser()
         self._repos: list[Repository] = []
         self._wizard: RepomanWizardDialog | None = None
         self._rows: list[RepoRow] = []

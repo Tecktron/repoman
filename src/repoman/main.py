@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 import gi
 
@@ -17,12 +16,11 @@ from .ui.main_window import RepomanWindow
 class RepomanApplication(Adw.Application):
     """GTK4 APT repository manager application. Singleton — second launch activates the existing window."""
 
-    def __init__(self, sources_dir: Path | None = None) -> None:
+    def __init__(self) -> None:
         super().__init__(
             application_id="io.github.Tecktron.repoman",
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
-        self._sources_dir = sources_dir
         self.connect("activate", self._on_activate)
 
     def _on_activate(self, app: Adw.Application) -> None:
@@ -40,7 +38,7 @@ class RepomanApplication(Adw.Application):
             dialog.present(tmp)
             return
 
-        win = RepomanWindow(application=app, sources_dir=self._sources_dir)
+        win = RepomanWindow(application=app)
         win.present()
 
 
@@ -50,15 +48,9 @@ def main() -> None:
         description="GTK4 APT repository manager for Ubuntu/Xubuntu.",
     )
     parser.add_argument("--version", action="version", version="repoman 0.1.0")
-    parser.add_argument(
-        "--sources-dir",
-        metavar="DIR",
-        help="Read repositories from DIR instead of /etc/apt/sources.list.d/ (useful for testing)",
-    )
     # Pass unknown args to GTK (e.g. --display)
-    args, remaining = parser.parse_known_args()
-    sources_dir = Path(args.sources_dir) if args.sources_dir else None
-    app = RepomanApplication(sources_dir=sources_dir)
+    _, remaining = parser.parse_known_args()
+    app = RepomanApplication()
     app.run([sys.argv[0]] + remaining)
 
 

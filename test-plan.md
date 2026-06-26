@@ -79,16 +79,7 @@ EOF
 
 ---
 
-## Phase 3 — Launch in isolated mode
-
-Create a temp directory and copy only the test files into it:
-
-```bash
-mkdir -p /tmp/repoman-test-sources
-sudo cp /etc/apt/sources.list.d/repoman-test-*.sources /tmp/repoman-test-sources/
-```
-
-Launch the app pointed at that directory:
+## Phase 3 — Launch the app
 
 ```bash
 cd /home/craig/Projects/repoman
@@ -96,10 +87,16 @@ pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 PYTHONPATH=/usr/lib/python3/dist-packages \
 DISPLAY=:0 \
 REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
-python3 -m repoman.main --sources-dir /tmp/repoman-test-sources > /tmp/repoman.log 2>&1 &
+python3 -m repoman.main > /tmp/repoman.log 2>&1 &
 ```
 
-The app will only see the 3 test repos — your real `/etc/apt/sources.list.d/` is not touched.
+> **Why no `--sources-dir` isolation?** The polkit helper only allows writes to
+> `/etc/apt/sources.list.d/`. Running the app against a temp directory sets each
+> repo's `source_file` to that temp path, so the wizard's Apply step is rejected
+> by the helper's path guard. The test files live in `/etc/apt/sources.list.d/`
+> and the helper writes there directly. Real repos will be visible alongside the
+> test repos, so the banner count will reflect your full system state — focus on
+> the `repoman-test-*` entries during wizard testing.
 
 ---
 
@@ -107,15 +104,12 @@ The app will only see the 3 test repos — your real `/etc/apt/sources.list.d/` 
 
 ### 4a. Banner
 
-**Expected:** Banner reads "2 repositories need review after upgrade"
-
-> Why 2 not 3? VS Code is disabled and suite-agnostic (`stable`). Disabled repos
-> appear in the banner. Docker CE has a stale codename (`jammy` ≠ `noble`) and also
-> appears. Fake has `jammy` ≠ `noble` and also appears.
-> Actually all 3 are flagged: Docker (stale codename), VS Code (disabled), Fake (stale codename).
-> Banner should read **"3 repositories need review after upgrade"**.
-
-**Correction — Expected:** Banner reads **"3 repositories need review after upgrade"**
+**Expected:** Banner appears and mentions repos needing review. The count includes
+your real repos alongside the 3 test repos — look for the banner itself rather than
+a specific count. The 3 test repos that should be flagged are:
+- Docker CE (`jammy` ≠ `noble` — stale codename)
+- VS Code (disabled)
+- Fake Unavailable Repo (`jammy` ≠ `noble` — stale codename)
 
 ### 4b. Open wizard
 
@@ -194,17 +188,17 @@ Click **Apply changes**
 ## Phase 5 — Verify the files were updated
 
 ```bash
-cat /tmp/repoman-test-sources/repoman-test-docker.sources
+cat /etc/apt/sources.list.d/repoman-test-docker.sources
 ```
 **Expected:** `Suites: noble` (updated from `jammy`), `Enabled: yes`
 
 ```bash
-cat /tmp/repoman-test-sources/repoman-test-vscode.sources
+cat /etc/apt/sources.list.d/repoman-test-vscode.sources
 ```
 **Expected:** `Enabled: yes` (re-enabled), `Suites: stable` (**unchanged** — suite-agnostic)
 
 ```bash
-cat /tmp/repoman-test-sources/repoman-test-fake.sources
+cat /etc/apt/sources.list.d/repoman-test-fake.sources
 ```
 **Expected:** Unchanged (skipped)
 
@@ -305,7 +299,6 @@ Select a target release and click **Check compatibility**.
 sudo rm /etc/apt/sources.list.d/repoman-test-docker.sources \
         /etc/apt/sources.list.d/repoman-test-vscode.sources \
         /etc/apt/sources.list.d/repoman-test-fake.sources
-rm -rf /tmp/repoman-test-sources
 ```
 
 Kill the app:
@@ -318,7 +311,7 @@ pkill -f "python3 -m repoman.main"
 ## Success checklist
 
 ### Wizard
-- [ ] Banner correctly counts repos needing attention on startup
+- [ ] Banner appears and the 3 test repos show up in the wizard
 - [ ] Wizard opens from banner and from Tools menu
 - [ ] All repos appear in Step 1 with correct pre-ticked state
 - [ ] Step 1: "Deselect all" / "Select all" button works correctly
