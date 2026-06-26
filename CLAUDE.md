@@ -52,7 +52,7 @@ cd /home/craig/Projects/repoman
 # Kill any existing instance first — second launch silently opens in existing process
 pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 
-PYTHONPATH=/usr/lib/python3/dist-packages \
+PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
 DISPLAY=:0 \
 REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
 python3 -m repoman.main

@@ -65,19 +65,19 @@ class TestCheckerHttp:
         assert result == AvailabilityStatus.UNKNOWN
         assert checker_module._network_failed is True
 
-    def test_connection_error_sets_network_failed(self, mocker):
+    def test_connection_error_returns_unavailable(self, mocker):
         mocker.patch(
             "repoman.checker.requests.head",
             side_effect=requests.exceptions.ConnectionError("DNS failure"),
         )
         c = Checker()
         result = c.check(_make_repo(), "noble")
-        assert result == AvailabilityStatus.UNKNOWN
-        assert checker_module._network_failed is True
+        assert result == AvailabilityStatus.UNAVAILABLE
+        assert checker_module._network_failed is False
 
-    def test_subsequent_checks_skipped_after_failure(self, mocker):
+    def test_subsequent_checks_skipped_after_timeout(self, mocker):
         mock_head = mocker.patch("repoman.checker.requests.head")
-        mock_head.side_effect = requests.exceptions.ConnectionError("down")
+        mock_head.side_effect = requests.exceptions.Timeout()
         c = Checker()
         c.check(_make_repo(), "noble")
         # Second call should not hit requests at all
@@ -89,11 +89,19 @@ class TestCheckerHttp:
     def test_network_error_message_captured(self, mocker):
         mocker.patch(
             "repoman.checker.requests.head",
-            side_effect=requests.exceptions.ConnectionError("Name resolution failed"),
+            side_effect=requests.exceptions.Timeout(),
         )
         c = Checker()
         c.check(_make_repo(), "noble")
-        assert "Name resolution failed" in checker_module.get_network_error()
+        assert checker_module.get_network_error() != ""
+
+    def test_suite_agnostic_bypasses_network_failed(self):
+        checker_module._network_failed = True
+        repo = _make_repo()
+        repo.availability = AvailabilityStatus.SUITE_AGNOSTIC
+        c = Checker()
+        result = c.check(repo, "noble")
+        assert result == AvailabilityStatus.SUITE_AGNOSTIC
 
     def test_head_url_includes_codename(self, mocker):
         mock_head = mocker.patch("repoman.checker.requests.head")
@@ -182,7 +190,7 @@ class TestCheckerResetState:
     def test_reset_clears_failure(self, mocker):
         mocker.patch(
             "repoman.checker.requests.head",
-            side_effect=requests.exceptions.ConnectionError("down"),
+            side_effect=requests.exceptions.Timeout(),
         )
         c = Checker()
         c.check(_make_repo(), "noble")

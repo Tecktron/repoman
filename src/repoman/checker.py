@@ -37,10 +37,10 @@ class Checker:
 
     def check(self, repo: Repository, codename: str) -> AvailabilityStatus:
         global _network_failed
-        if _network_failed:
-            return AvailabilityStatus.UNKNOWN
         if repo.availability == AvailabilityStatus.SUITE_AGNOSTIC:
             return AvailabilityStatus.SUITE_AGNOSTIC
+        if _network_failed:
+            return AvailabilityStatus.UNKNOWN
         if repo.is_ppa:
             return self._check_launchpad(repo, codename)
         return self._check_http(repo, codename)
@@ -90,10 +90,10 @@ class Checker:
             _network_failed = True
             _network_error_message = f"Connection timed out checking {repo.uris[0]}"
             return AvailabilityStatus.UNKNOWN
-        except requests.exceptions.ConnectionError as exc:
-            _network_failed = True
-            _network_error_message = str(exc)
-            return AvailabilityStatus.UNKNOWN
+        except requests.exceptions.ConnectionError:
+            # DNS failure or refused connection — this specific host is unreachable,
+            # not a general network outage. Treat the repo as unavailable.
+            return AvailabilityStatus.UNAVAILABLE
         except requests.exceptions.RequestException as exc:
             _network_failed = True
             _network_error_message = str(exc)

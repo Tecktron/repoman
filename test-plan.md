@@ -1,7 +1,8 @@
 # Repoman End-to-End Test Plan
 
 Covers the full wizard flow, compat checker, and state management using fake
-`.sources` files on a live `noble` system, without touching any real repos.
+`.sources` files on a live `noble` system. Real repos in `/etc/apt/sources.list.d/`
+are visible alongside the test files — focus on the `repoman-test-*` entries.
 
 ---
 
@@ -84,19 +85,14 @@ EOF
 ```bash
 cd /home/craig/Projects/repoman
 pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
-PYTHONPATH=/usr/lib/python3/dist-packages \
+PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
 DISPLAY=:0 \
 REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
 python3 -m repoman.main > /tmp/repoman.log 2>&1 &
 ```
 
-> **Why no `--sources-dir` isolation?** The polkit helper only allows writes to
-> `/etc/apt/sources.list.d/`. Running the app against a temp directory sets each
-> repo's `source_file` to that temp path, so the wizard's Apply step is rejected
-> by the helper's path guard. The test files live in `/etc/apt/sources.list.d/`
-> and the helper writes there directly. Real repos will be visible alongside the
-> test repos, so the banner count will reflect your full system state — focus on
-> the `repoman-test-*` entries during wizard testing.
+> Real repos will be visible alongside the test repos — focus on the
+> `repoman-test-*` entries during wizard testing.
 
 ---
 
@@ -120,9 +116,9 @@ Click **Review** on the banner, or **Tools → Run Upgrade Assistant**.
 ### 4c. Step 1 — Select repositories
 
 **Expected:**
-- All 3 repos listed with pre-ticked checkboxes
+- The 3 test repos listed and pre-ticked (real repos needing attention will also appear)
 - Group header has a **"Deselect all"** button (all are ticked, so label reads "Deselect all")
-- Status icons (no network checks run yet on this page):
+- Status icons on the test repos (no network checks run yet on this page):
   - Docker CE → dimmed **?** (UNKNOWN — stale codename, not yet checked)
   - VS Code → **⟳** sync icon (SUITE_AGNOSTIC — detected at parse time)
   - Fake → dimmed **?** (UNKNOWN)
@@ -137,14 +133,14 @@ Click **Review** on the banner, or **Tools → Run Upgrade Assistant**.
 ### 4d. Step 2 — Checking availability
 
 **Expected:**
-- All 3 rows start with spinning indicators
-- Results after checks complete:
+- All rows start with spinning indicators
+- Results after checks complete (for the test repos):
   - Docker CE → green **✓** (AVAILABLE)
   - VS Code → **⟳** sync icon (SUITE_AGNOSTIC — no network call needed)
   - Fake → orange **⚠** (UNAVAILABLE — may take a few seconds to time out)
 - Hover over each icon → tooltip shows the status description
 - Once all resolve, "Next" button becomes active
-- Group description updates to e.g. **"1 of 3 available for noble"** (only AVAILABLE counts)
+- Group description updates to reflect how many of the total checked repos are available
 
 **Back-navigation check:**
 - Click **Back** to return to Step 1

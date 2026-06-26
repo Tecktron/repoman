@@ -8,7 +8,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, GLib, Gtk
 
-from ...checker import Checker, get_network_error
+from ...checker import Checker, get_network_error, reset_network_state
 from ...models import AvailabilityStatus, Repository, WizardState
 from .base_page import RepomanWizardPage
 
@@ -44,6 +44,7 @@ class CheckAvailabilityPage(RepomanWizardPage):
         if self._checks_started:
             return
         self._checks_started = True
+        reset_network_state()
         threading.Thread(target=self._run_checks, daemon=True).start()
 
     def _on_proceed(self) -> None:
@@ -89,10 +90,10 @@ class CheckAvailabilityPage(RepomanWizardPage):
         if css:
             icon.add_css_class(css)
         tooltip = {
-            AvailabilityStatus.AVAILABLE: f"Available for {self._state.target_codename}",
-            AvailabilityStatus.UNAVAILABLE: f"Not yet available for {self._state.target_codename}",
-            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic — always compatible",
-        }.get(status, "Could not determine availability")
+            AvailabilityStatus.AVAILABLE: f"Available for {self._state.target_codename} — will be re-enabled",
+            AvailabilityStatus.UNAVAILABLE: f"Not available for {self._state.target_codename} — will be skipped",
+            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic — no codename update needed, will be re-enabled",
+        }.get(status, "Could not check — network error")
         icon.set_tooltip_text(tooltip)
         row.add_suffix(icon)
         self._pending -= 1
