@@ -7,10 +7,11 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, Gio
+from gi.repository import Adw, Gio, Gtk
 
 from .paths import check_required_tools
 from .ui.main_window import RepomanWindow
+from .ui.position import center_on_screen
 
 
 class RepomanApplication(Adw.Application):
@@ -26,16 +27,42 @@ class RepomanApplication(Adw.Application):
     def _on_activate(self, app: Adw.Application) -> None:
         missing = check_required_tools()
         if missing:
-            dialog = Adw.AlertDialog.new(
-                "Missing required tools",
-                "repoman cannot start because the following are not available:\n\n"
-                + "\n".join(f"• {m}" for m in missing),
+            tmp = Gtk.ApplicationWindow(application=app)
+            dlg = Gtk.Window(
+                title="Missing required tools",
+                transient_for=tmp,
+                modal=True,
+                resizable=False,
+                default_width=400,
             )
-            dialog.add_response("quit", "Quit")
-            dialog.connect("response", lambda _d, _r: app.quit())
-            # Create a temporary window so the dialog has a parent to attach to
-            tmp = Adw.ApplicationWindow(application=app)
-            dialog.present(tmp)
+            box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=12,
+                margin_top=18,
+                margin_bottom=18,
+                margin_start=18,
+                margin_end=18,
+            )
+            box.append(
+                Gtk.Label(
+                    label=(
+                        "repoman cannot start because the following are not available:\n\n"
+                        + "\n".join(f"• {m}" for m in missing)
+                    ),
+                    wrap=True,
+                    xalign=0,
+                    max_width_chars=45,
+                )
+            )
+            btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
+            quit_btn = Gtk.Button(label="Quit")
+            quit_btn.add_css_class("destructive-action")
+            quit_btn.connect("clicked", lambda _: app.quit())
+            btn_row.append(quit_btn)
+            box.append(btn_row)
+            dlg.set_child(box)
+            center_on_screen(dlg)
+            dlg.present()
             return
 
         win = RepomanWindow(application=app)

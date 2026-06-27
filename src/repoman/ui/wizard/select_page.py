@@ -11,6 +11,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from ... import config_io
 from ...models import AvailabilityStatus, Repository, WizardState
+from ..position import center_on_parent
 from .base_page import RepomanWizardPage
 
 
@@ -74,9 +75,30 @@ class SelectReposPage(RepomanWizardPage):
         try:
             saved = config_io.load_config(path)
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
-            err = Adw.AlertDialog.new("Could not load file", str(exc))
-            err.add_response("ok", "OK")
-            err.present(self.get_root())
+            dlg = Gtk.Window(
+                title="Could not load file",
+                transient_for=self.get_root(),
+                modal=True,
+                resizable=False,
+                default_width=360,
+            )
+            err_box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=12,
+                margin_top=18,
+                margin_bottom=18,
+                margin_start=18,
+                margin_end=18,
+            )
+            err_box.append(Gtk.Label(label=str(exc), wrap=True, xalign=0, max_width_chars=42))
+            btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
+            ok_btn = Gtk.Button(label="OK")
+            ok_btn.connect("clicked", lambda _: dlg.close())
+            btn_row.append(ok_btn)
+            err_box.append(btn_row)
+            dlg.set_child(err_box)
+            center_on_parent(dlg)
+            dlg.present()
             return
         matched, _ = config_io.match_repos(saved, list(self._state.candidate_repos))
         enabled_uris = {entry["uris"][0] for entry, _ in matched if entry.get("enabled") and entry.get("uris")}

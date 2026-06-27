@@ -308,23 +308,46 @@ class RepomanWindow(Gtk.ApplicationWindow):
         enabled_count = sum(1 for r in self._repos if r.enabled)
         if enabled_count == 0:
             return
-        dialog = Adw.AlertDialog.new(
-            "Disable all third-party repositories?",
-            f"This will disable all {enabled_count} enabled "
-            f"{'repository' if enabled_count == 1 else 'repositories'}. "
-            "You can re-enable them individually in repoman after your upgrade.",
+        dlg = Gtk.Window(
+            title="Disable all repositories?",
+            transient_for=self,
+            modal=True,
+            resizable=False,
+            default_width=380,
         )
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("disable", "Disable All")
-        dialog.set_response_appearance("disable", Adw.ResponseAppearance.DESTRUCTIVE)
-        dialog.set_default_response("cancel")
-        dialog.set_close_response("cancel")
-        dialog.connect("response", self._on_disable_all_response)
-        dialog.present(self)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+        box.append(
+            Gtk.Label(
+                label=(
+                    f"This will disable all {enabled_count} enabled "
+                    f"{'repository' if enabled_count == 1 else 'repositories'}. "
+                ),
+                wrap=True,
+                xalign=0,
+                max_width_chars=45,
+            )
+        )
+        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dlg.close())
+        disable_btn = Gtk.Button(label="Disable All")
+        disable_btn.add_css_class("destructive-action")
+        disable_btn.connect("clicked", lambda _: (dlg.close(), self._do_disable_all()))
+        btn_row.append(cancel_btn)
+        btn_row.append(disable_btn)
+        box.append(btn_row)
+        dlg.set_child(box)
+        center_on_parent(dlg)
+        dlg.present()
 
-    def _on_disable_all_response(self, _dialog: Adw.AlertDialog, response: str) -> None:
-        if response != "disable":
-            return
+    def _do_disable_all(self) -> None:
         to_disable = [r for r in self._repos if r.enabled]
         for repo in to_disable:
             repo.enabled = False
@@ -383,12 +406,38 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
         attention = repos_needing_attention(self._repos)
         if not attention:
-            dialog = Adw.AlertDialog.new(
-                "All repositories are current",
-                "Every repository is enabled and pointing at the correct release.",
+            dlg = Gtk.Window(
+                title="All repositories are current",
+                transient_for=self,
+                modal=True,
+                resizable=False,
+                default_width=360,
             )
-            dialog.add_response("ok", "OK")
-            dialog.present(self)
+            box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=12,
+                margin_top=18,
+                margin_bottom=18,
+                margin_start=18,
+                margin_end=18,
+            )
+            box.append(
+                Gtk.Label(
+                    label="Every repository is enabled and pointing at the correct release.",
+                    wrap=True,
+                    xalign=0,
+                    max_width_chars=42,
+                )
+            )
+            btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
+            ok_btn = Gtk.Button(label="OK")
+            ok_btn.add_css_class("suggested-action")
+            ok_btn.connect("clicked", lambda _: dlg.close())
+            btn_row.append(ok_btn)
+            box.append(btn_row)
+            dlg.set_child(box)
+            center_on_parent(dlg)
+            dlg.present()
             return
 
         reset_network_state()
@@ -529,19 +578,41 @@ class RepomanWindow(Gtk.ApplicationWindow):
                 "be installed. You may need to add the keys manually after creating them."
             )
 
-        dialog = Adw.AlertDialog.new(f"{n} {'repository' if n == 1 else 'repositories'} not found", body)
-        dialog.add_response("skip", "Skip")
+        dlg = Gtk.Window(
+            title=f"{n} {'repository' if n == 1 else 'repositories'} not found",
+            transient_for=self,
+            modal=True,
+            resizable=False,
+            default_width=400,
+        )
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+        box.append(Gtk.Label(label=body, wrap=True, xalign=0, max_width_chars=48))
+        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        skip_btn = Gtk.Button(label="Skip")
+        skip_btn.connect("clicked", lambda _: dlg.close())
+        btn_row.append(skip_btn)
         if 0 < enabled_count < n:
-            dialog.add_response("enabled-only", f"Add {enabled_count} enabled")
-        dialog.add_response("all", f"Add all {n}")
-        dialog.set_default_response("skip")
-        dialog.set_close_response("skip")
-        dialog.connect("response", lambda _d, r: self._on_missing_response(r, missing))
-        dialog.present(self)
+            enabled_btn = Gtk.Button(label=f"Add {enabled_count} enabled")
+            enabled_btn.add_css_class("suggested-action")
+            enabled_btn.connect("clicked", lambda _: (dlg.close(), self._on_missing_response("enabled-only", missing)))
+            btn_row.append(enabled_btn)
+        all_btn = Gtk.Button(label=f"Add all {n}")
+        all_btn.add_css_class("suggested-action")
+        all_btn.connect("clicked", lambda _: (dlg.close(), self._on_missing_response("all", missing)))
+        btn_row.append(all_btn)
+        box.append(btn_row)
+        dlg.set_child(box)
+        center_on_parent(dlg)
+        dlg.present()
 
     def _on_missing_response(self, response: str, missing: list[dict]) -> None:
-        if response == "skip":
-            return
         to_create = missing if response == "all" else [m for m in missing if m.get("enabled", True)]
         if not to_create:
             return

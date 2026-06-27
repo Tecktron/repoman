@@ -287,13 +287,34 @@ Select a target release and click **Check compatibility**.
 
 ### 8d. Load — missing repos
 
-- Edit the `.repoman` file to add a fake repo entry with a URI not present on this system
-- Reload it
+Create a file called `missing.repoman` with the following content:
+
+```json
+{
+  "version": 1,
+  "saved_at": "2026-06-27T10:00:00",
+  "repos": [
+    {
+      "types": ["deb"],
+      "uris": ["https://packages.missing-test.repoman.example.com/ubuntu"],
+      "suites": ["noble"],
+      "components": ["main"],
+      "enabled": true,
+      "description": "Missing Test Repo",
+      "source_file": "/etc/apt/sources.list.d/missing-test.sources"
+    }
+  ]
+}
+```
+
+Load it via **Tools → State Management → Load…**
 
 **Expected:**
-- Alert dialog "N repository/repositories not found" with Skip / Add all options
-- "Add all N" → polkit prompt, file created in sources.list.d, sidebar refreshes
+- Alert dialog "1 repository not found" with Skip / Add all options
+- "Add all 1" → polkit prompt, file created in sources.list.d, sidebar refreshes
 - "Skip" → dialog closes, no file created
+
+To also test the GPG warning shown in the dialog, add `"signed_by": "/usr/share/keyrings/missing-test-archive-keyring.gpg"` to the repo entry before loading.
 
 ---
 
@@ -303,6 +324,18 @@ Select a target release and click **Check compatibility**.
 sudo rm /etc/apt/sources.list.d/repoman-test-docker.sources \
         /etc/apt/sources.list.d/repoman-test-vscode.sources \
         /etc/apt/sources.list.d/repoman-test-fake.sources
+```
+
+If Phase 8d "Add all" was used, also remove the file it created:
+
+```bash
+sudo rm -f /etc/apt/sources.list.d/missing-test.sources
+```
+
+Remove the test state files:
+
+```bash
+rm -f ~/Desktop/test.repoman ~/Desktop/missing.repoman
 ```
 
 Kill the app:
