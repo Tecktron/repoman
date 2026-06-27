@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import shutil
 from pathlib import Path
 
@@ -18,11 +17,7 @@ LSB_RELEASE = _find("lsb_release")
 UPDATE_MANAGER = shutil.which("update-manager")
 SOFTWARE_PROPERTIES = shutil.which("software-properties-gtk")
 
-# Polkit helper — allow override via env var for development/testing
-POLKIT_HELPER = os.environ.get(
-    "REPOMAN_HELPER_PATH",
-    "/usr/lib/repoman/polkit-helper",
-)
+POLKIT_HELPER = "/usr/lib/repoman/polkit-helper"
 
 
 def check_required_tools() -> list[str]:

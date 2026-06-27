@@ -26,6 +26,15 @@ ls /usr/share/polkit-1/actions/io.github.Tecktron.repoman.policy
 chmod +x /home/craig/Projects/repoman/polkit-helper
 ```
 
+### 1c. Symlink helper to installed path
+
+Required for polkit to match the action and honour `auth_admin_keep`:
+
+```bash
+sudo mkdir -p /usr/lib/repoman
+sudo ln -sf /home/craig/Projects/repoman/polkit-helper /usr/lib/repoman/polkit-helper
+```
+
 ---
 
 ## Phase 2 — Create test repo files
@@ -87,7 +96,6 @@ cd /home/craig/Projects/repoman
 pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
 DISPLAY=:0 \
-REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
 python3 -m repoman.main > /tmp/repoman.log 2>&1 &
 ```
 

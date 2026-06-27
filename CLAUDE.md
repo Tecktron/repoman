@@ -45,6 +45,16 @@ function is actually called is worse than no hint.
 
 ---
 
+## One-time dev setup
+
+Symlink the dev helper to the installed path so polkit can match the action and
+honour `auth_admin_keep` (~5-minute auth caching between operations):
+
+```bash
+sudo mkdir -p /usr/lib/repoman
+sudo ln -sf /home/craig/Projects/repoman/polkit-helper /usr/lib/repoman/polkit-helper
+```
+
 ## Running the app
 
 ```bash
@@ -54,7 +64,6 @@ pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 
 PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
 DISPLAY=:0 \
-REPOMAN_HELPER_PATH=/home/craig/Projects/repoman/polkit-helper \
 python3 -m repoman.main
 ```
 
