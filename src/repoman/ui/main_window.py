@@ -112,7 +112,9 @@ class RepomanWindow(Gtk.ApplicationWindow):
         )
         self._spinner = Gtk.Spinner(spinning=True)
         self._spinner_box.append(self._spinner)
-        self._spinner_box.append(Gtk.Label(label="Loading repositories…", css_classes=["dim-label"]))
+        loading_lbl = Gtk.Label(label="Loading repositories…")
+        loading_lbl.set_opacity(0.55)
+        self._spinner_box.append(loading_lbl)
 
         sidebar_stack = Gtk.Stack()
         sidebar_stack.add_named(self._spinner_box, "loading")
@@ -635,7 +637,9 @@ class RepomanWindow(Gtk.ApplicationWindow):
         name_label = Gtk.Label(label="Repoman")
         name_label.add_css_class("title-1")
         header_box.append(name_label)
-        header_box.append(Gtk.Label(label="Version 0.1.0", css_classes=["dim-label"]))
+        version_lbl = Gtk.Label(label="Version 0.1.0")
+        version_lbl.set_opacity(0.55)
+        header_box.append(version_lbl)
         box.append(header_box)
 
         box.append(Gtk.Separator())

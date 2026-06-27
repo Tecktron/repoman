@@ -51,6 +51,32 @@ class ConfirmChangesPage(RepomanWizardPage):
 
     def _build_ui(self) -> None:
         if self._to_apply:
+            auth_card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            auth_card.add_css_class("card")
+            icon = Gtk.Image.new_from_icon_name("dialog-password-symbolic")
+            icon.set_icon_size(Gtk.IconSize.LARGE)
+            icon.add_css_class("accent")
+            icon.set_margin_start(12)
+            auth_card.append(icon)
+            text = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=2,
+                valign=Gtk.Align.CENTER,
+                margin_top=12,
+                margin_bottom=12,
+            )
+            title_lbl = Gtk.Label(label="Administrator password required", xalign=0)
+            title_lbl.add_css_class("caption-heading")
+            title_lbl.add_css_class("warning")
+            sub_lbl = Gtk.Label(label="Writes to /etc/apt/sources.list.d/", xalign=0)
+            sub_lbl.add_css_class("caption")
+            sub_lbl.set_opacity(0.55)
+            text.append(title_lbl)
+            text.append(sub_lbl)
+            auth_card.append(text)
+            self._content_box.append(auth_card)
+
+        if self._to_apply:
             will_apply_group = Adw.PreferencesGroup(
                 title="Will be re-enabled",
                 description=f"Suite field updated to {self._state.target_codename}",
@@ -65,16 +91,6 @@ class ConfirmChangesPage(RepomanWizardPage):
             for repo in skipped:
                 skipped_group.add(self._make_row(repo, success=False))
             self._content_box.append(skipped_group)
-
-        if self._to_apply:
-            auth_group = Adw.PreferencesGroup()
-            auth_row = Adw.ActionRow(
-                title="Administrator password required",
-                subtitle="Writes to /etc/apt/sources.list.d/",
-            )
-            auth_row.add_prefix(Gtk.Image.new_from_icon_name("dialog-password-symbolic"))
-            auth_group.add(auth_row)
-            self._content_box.append(auth_group)
 
     def _make_row(self, repo: Repository, *, success: bool) -> Adw.ActionRow:
         row = Adw.ActionRow(

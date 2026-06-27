@@ -4,7 +4,7 @@ GTK4 + libadwaita APT repository manager for Ubuntu/Xubuntu.
 "Repo Man" — as in repossessing your repos after an upgrade. Also the 1984 film.
 
 **App ID:** `io.github.Tecktron.repoman`
-**Platform minimum:** Xubuntu 24.04 LTS (libadwaita 1.4.2)
+**Platform minimum:** Xubuntu 24.04 LTS (libadwaita 1.5.0)
 **Target environment:** Xfce/Xfwm4 (system-decorated windows, SSD, no CSD)
 **Singleton:** `Gio.Application` — a second `python3 -m repoman.main` launch
 opens a new window in the existing process, not a new process.
@@ -242,7 +242,7 @@ All windows (`RepomanWindow`, `RepomanWizardDialog`, `CompatCheckerWindow`,
 shortcuts window, about window) are **`Gtk.Window`**, not `Adw.ApplicationWindow`.
 This gives consistent Xfwm4 system titlebars. libadwaita widgets inside still work.
 
-`Adw.Dialog` is NOT used — it requires libadwaita 1.5; minimum is 1.4.2 (24.04).
+`Adw.Dialog` is NOT used — `Gtk.Window` gives consistent Xfwm4 system titlebars and the approach is already established across all windows.
 
 **Centering** (`src/repoman/ui/position.py`): post-map via python-xlib
 (`configure(x=y)` + `display.sync()`). Known issue: slight flicker because the WM
@@ -424,7 +424,7 @@ Repos on the system but absent from the file are left untouched.
 ## Build / packaging
 
 Runtime deps (system packages, not pip): `python3-gi`, `gir1.2-gtk-4.0`,
-`gir1.2-adw-1` (≥1.4), `python3-apt`, `python3-debian`, `python3-launchpadlib`,
+`gir1.2-adw-1` (≥1.5), `python3-apt`, `python3-debian`, `python3-launchpadlib`,
 `python3-requests`, `policykit-1`.
 
 polkit policy must be installed to `/usr/share/polkit-1/actions/` and polkit

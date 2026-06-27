@@ -210,7 +210,7 @@ class CompatCheckerWindow(Gtk.Window):
             subtitle=repo.uris[0] if repo.uris else "",
         )
         if not repo.enabled:
-            row.add_css_class("dim-label")
+            row.set_opacity(0.55)
         return row
 
     def _build_result_groups(self, target_codename: str) -> None:

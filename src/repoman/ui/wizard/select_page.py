@@ -97,7 +97,7 @@ class SelectReposPage(RepomanWizardPage):
             wrap=True,
             xalign=0,
         )
-        subtitle.add_css_class("dim-label")
+        subtitle.set_opacity(0.55)
         self._content_box.append(subtitle)
 
         self._load_btn = Gtk.Button(label="Select from state file…", valign=Gtk.Align.CENTER)
@@ -142,8 +142,14 @@ class SelectReposPage(RepomanWizardPage):
             AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
             AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
             AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
-        }.get(repo.availability, ("dialog-question-symbolic", "dim-label"))
+        }.get(repo.availability, ("dialog-question-symbolic", ""))
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
             icon.add_css_class(css)
+        if repo.availability not in (
+            AvailabilityStatus.AVAILABLE,
+            AvailabilityStatus.UNAVAILABLE,
+            AvailabilityStatus.SUITE_AGNOSTIC,
+        ):
+            icon.set_opacity(0.55)
         return icon

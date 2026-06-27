@@ -67,10 +67,7 @@ class RepoRow(Adw.ActionRow):
         return False  # allow GTK to update switch visual state
 
     def _update_style(self) -> None:
-        if self._repo.enabled:
-            self.remove_css_class("dim-label")
-        else:
-            self.add_css_class("dim-label")
+        self.set_opacity(1.0 if self._repo.enabled else 0.55)
 
     def _refresh_badge(self) -> None:
         if self._badge:
