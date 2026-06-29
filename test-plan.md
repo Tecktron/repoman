@@ -318,12 +318,178 @@ To also test the GPG warning shown in the dialog, add `"signed_by": "/usr/share/
 
 ---
 
-## Phase 9 — Cleanup
+## Phase 9 — Add repository
+
+### 9a. Add via Auto tab (one-liner)
+
+Open **Repos → Add Repository…**, paste into the Auto tab:
+
+```
+deb https://download.docker.com/linux/ubuntu noble stable
+```
+
+Click **Add Repository**.
+
+**Expected:**
+- polkit prompt fires
+- After auth: new `download-docker-com.sources` row appears in sidebar, selected
+- Detail pane shows the Docker URI, suite `noble`, component `stable`
+
+### 9b. Add via Auto tab (DEB822 block)
+
+Open **Repos → Add Repository…**, paste a full DEB822 block:
+
+```
+Types: deb
+URIs: https://packages.microsoft.com/repos/code
+Suites: stable
+Components: main
+X-Repolib-Name: VS Code Test
+```
+
+Click **Add Repository**.
+
+**Expected:** File created, row selected, description shows "VS Code Test"
+
+### 9c. Add via Manual tab
+
+Switch to the Manual tab. Fill:
+- Repository URI: `https://packages.mozilla.org/apt`
+- Suite / Codename: `mozilla`
+- Components: `main`
+- GPG key URL: _(leave empty)_
+- Name / Description: `Mozilla APT`
+
+Click **Add Repository**.
+
+**Expected:** `packages-mozilla-org.sources` created, row selected.
+
+### 9d. Add with GPG key URL
+
+Manual tab, fill URI + paste a key URL (e.g. `https://packages.microsoft.com/keys/microsoft.asc`).
+
+**Expected:**
+- Signing key path auto-filled as `/usr/share/keyrings/packages-microsoft-com.gpg`
+- After polkit: both `.sources` and `.gpg` files created
+- Detail pane signing row shows the key filename
+
+### 9e. Auto tab — parse failure
+
+Open **Repos → Add Repository…**, paste garbage text into Auto tab and click **Add Repository**.
+
+**Expected:** Inline error label appears ("Could not parse…"), button re-enables.
+
+### 9f. Manual tab — empty URI
+
+Manual tab with URI field empty (button should be insensitive).
+
+**Expected:** "Add Repository" button is greyed out until a URI is typed.
+
+---
+
+## Phase 10 — Remove repository
+
+### 10a. Remove single repo
+
+Select a test repo (e.g. the Docker one added in Phase 9a). Click **Remove repository…**.
+
+**Expected:**
+- Confirmation modal opens titled "Remove repository"
+- Body mentions the file name
+- Cancel → nothing happens, repo still selected
+- Click Remove → polkit prompt
+- After auth: row gone, detail pane shows "No repository selected" empty state
+- Toast: _(no explicit toast — panel just clears)_
+
+### 10b. Remove multiple repos
+
+Create two test repos via Phase 9 steps, then open **Repos → Remove Multiple…**.
+
+**Expected:**
+- Window lists all current repos with checkboxes
+- "Remove N selected" button is insensitive until at least one is checked
+- Check two repos → button label reads "Remove 2 selected"
+- Click → polkit prompt
+- After auth: both rows gone, sidebar refreshes, toast "Removed 2 repositories"
+
+---
+
+## Phase 11 — Signing key editor
+
+### 11a. Add signing key to repo without one
+
+Select a repo that has no `Signed-By`. The Signing group should show "No signing key configured" with an **Add** button.
+
+Click **Add**.
+
+**Expected:** "Add signing key" window opens with three tabs: Fetch, Use existing file, Paste.
+
+**Fetch tab:**
+- Enter a valid key URL and click Fetch
+- Key content appears in the text area
+- File path row auto-populated if empty
+- Save becomes active
+- Click Save → polkit → signing row updates with key filename
+
+**Use existing file tab:**
+- Click "Choose file…" → file browser opens filtered to `.gpg`, `.asc`, `.pgp`
+- Select an existing keyring from `/usr/share/keyrings/`
+- Save becomes active (no key content written — just updates Signed-By path)
+
+**Paste tab:**
+- Paste an ASCII-armored key block
+- Save validates via gpg — rejects garbage, accepts valid key
+
+### 11b. Edit existing signing key
+
+Select a repo with a `Signed-By` field. Signing row shows key filename with **Edit** button.
+
+Click **Edit**.
+
+**Expected:** "Edit signing key" window opens with two tabs: "Key content" and "Update".
+
+- Key content tab shows the armored key text (even for binary `.gpg` files)
+- Content is editable; Save button activates when content differs from original
+- Update tab has "Replace from file" (opens file browser) and "Replace from URL" with Fetch button
+- Selecting a file on Update tab → "Replace key" button activates
+- After Replace from file → polkit updates Signed-By path in `.sources`
+
+### 11c. Signing key file missing
+
+Select a repo where `Signed-By` points to a non-existent file.
+
+**Expected:**
+- Signing row subtitle "Key file not found" with warning styling
+- Button label **Add**
+- Clicking Add → key editor opens; key content tab shows warning label, text area empty
+
+---
+
+## Phase 12 — Reload repositories
+
+Open **Tools → Reload repositories (apt update)…**
+
+**Expected:**
+- Toast "Updating repositories…" appears
+- After PackageKit finishes: toast updates to "Repositories updated"
+- If PackageKit fails: error dialog shown with message
+
+---
+
+## Phase 13 — Cleanup
 
 ```bash
 sudo rm /etc/apt/sources.list.d/repoman-test-docker.sources \
         /etc/apt/sources.list.d/repoman-test-vscode.sources \
         /etc/apt/sources.list.d/repoman-test-fake.sources
+```
+
+Remove any repos added in Phases 9–12:
+
+```bash
+sudo rm -f /etc/apt/sources.list.d/download-docker-com.sources \
+           /etc/apt/sources.list.d/packages-microsoft-com.sources \
+           /etc/apt/sources.list.d/packages-mozilla-org.sources
 ```
 
 If Phase 8d "Add all" was used, also remove the file it created:
@@ -385,3 +551,38 @@ pkill -f "python3 -m repoman.main"
 - [ ] Load with changed enabled state triggers polkit and updates sidebar
 - [ ] Load with missing repos offers Add / Skip dialog
 - [ ] "Add all" creates files and reloads sidebar
+
+### Add Repository
+- [ ] Auto tab: one-liner parses correctly, polkit fires, row selected after add
+- [ ] Auto tab: DEB822 block parses correctly including X-Repolib-Name
+- [ ] Manual tab: repo created from individual fields
+- [ ] Manual tab: GPG key URL auto-fills Signing key path field
+- [ ] Manual tab: key URL provided → key file written alongside .sources in one polkit call
+- [ ] Auto tab: bad input shows inline error, button re-enables
+- [ ] Manual tab: empty URI keeps "Add Repository" insensitive
+
+### Remove Repository
+- [ ] Single remove: confirmation modal shows repo name and file
+- [ ] Cancel in modal → nothing happens
+- [ ] Confirm → polkit → row gone, detail pane shows empty state
+- [ ] Remove multiple: checkbox list, button insensitive until ≥1 checked
+- [ ] Remove multiple: button label updates with count
+- [ ] Remove multiple: polkit → all checked rows gone, sidebar refreshes, toast shown
+
+### Signing Key Editor
+- [ ] Add signing key: Fetch tab downloads key and populates text area
+- [ ] Add signing key: Use existing file tab — file browser opens, Save activates on selection
+- [ ] Add signing key: Paste tab — rejects garbage key, accepts valid armored key
+- [ ] Add signing key: after save, signing row updates to show key filename
+- [ ] Edit signing key: "Key content" tab shows armored text for binary .gpg files
+- [ ] Edit signing key: content change enables Save
+- [ ] Edit signing key: "Update" tab — Replace from file updates Signed-By path in .sources
+- [ ] Edit signing key: "Update" tab — Replace from URL fetches and writes new key
+- [ ] Missing key file: signing row shows "Key file not found", button label is "Add"
+- [ ] Missing key file: clicking Add opens editor with empty content tab
+
+### Reload repositories
+- [ ] Tools → Reload repositories fires apt update via PackageKit
+- [ ] "Updating repositories…" toast appears during refresh
+- [ ] Success toast "Repositories updated" shown on completion
+- [ ] Failure shows error dialog with message
