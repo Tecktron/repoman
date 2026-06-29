@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import threading
+from pathlib import Path
 
 import gi
 
@@ -22,6 +23,7 @@ class DetailPane(Gtk.Box):
     __gtype_name__ = "RepomanDetailPane"
 
     repo_saved = GObject.Signal("repo-saved", arg_types=(object,))
+    repo_removed = GObject.Signal("repo-removed", arg_types=(object,))
 
     def __init__(self, **kwargs) -> None:
         super().__init__(
@@ -120,15 +122,28 @@ class DetailPane(Gtk.Box):
         self._enabled_row = Adw.SwitchRow(title="Enabled")
         edit_group.add(self._enabled_row)
 
-        # Save button
-        self._save_button = Gtk.Button(
-            label="Save changes",
-            margin_top=8,
-            halign=Gtk.Align.END,
-        )
+        # Signing key row — state driven; refreshed in _populate()
+        self._signing_group = Adw.PreferencesGroup(title="Signing")
+        self._signing_row = Adw.ActionRow(title="Signing key")
+        self._signing_key_btn = Gtk.Button(valign=Gtk.Align.CENTER)
+        self._signing_key_btn.add_css_class("flat")
+        self._signing_key_btn.connect("clicked", self._on_signing_key_clicked)
+        self._signing_row.add_suffix(self._signing_key_btn)
+        self._signing_group.add(self._signing_row)
+        detail_box.append(self._signing_group)
+
+        # Button row: Remove (left) | Save (right)
+        btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, margin_top=8)
+        self._remove_button = Gtk.Button(label="Remove repository…", halign=Gtk.Align.START)
+        self._remove_button.add_css_class("destructive-action")
+        self._remove_button.connect("clicked", self._on_remove_clicked)
+        btn_row.append(self._remove_button)
+        btn_row.append(Gtk.Box(hexpand=True))
+        self._save_button = Gtk.Button(label="Save changes", halign=Gtk.Align.END)
         self._save_button.add_css_class("suggested-action")
         self._save_button.connect("clicked", self._on_save_clicked)
-        detail_box.append(self._save_button)
+        btn_row.append(self._save_button)
+        detail_box.append(btn_row)
 
         # Toast overlay wraps the stack — set child before adding to self
         self._toast_overlay = Adw.ToastOverlay()
@@ -152,6 +167,117 @@ class DetailPane(Gtk.Box):
         self._suite_row.set_text(" ".join(repo.suites))
         self._components_row.set_text(" ".join(repo.components))
         self._enabled_row.set_active(repo.enabled)
+        self._refresh_signing_row(repo)
+
+    # ------------------------------------------------------------------
+    # Signing key
+    # ------------------------------------------------------------------
+
+    def _refresh_signing_row(self, repo: Repository) -> None:
+        signed_by = repo.signed_by
+        if signed_by and Path(signed_by).exists():
+            self._signing_row.set_subtitle(Path(signed_by).name)
+            self._signing_row.remove_css_class("warning")
+            self._signing_key_btn.set_label("Edit")
+        elif signed_by:
+            self._signing_row.set_subtitle("Key file not found")
+            self._signing_row.add_css_class("warning")
+            self._signing_key_btn.set_label("Add")
+        else:
+            self._signing_row.set_subtitle("No signing key configured")
+            self._signing_row.remove_css_class("warning")
+            self._signing_key_btn.set_label("Add")
+
+    def _on_signing_key_clicked(self, _btn: Gtk.Button) -> None:
+        if self._repo is None:
+            return
+        if self._repo.signed_by:
+            from .key_editor_window import KeyEditWindow
+
+            win = KeyEditWindow(repo=self._repo, transient_for=self.get_root())
+        else:
+            from .key_editor_window import KeyAddWindow
+
+            win = KeyAddWindow(repo=self._repo, transient_for=self.get_root())
+        win.connect("key-saved", self._on_key_saved)
+        win.present()
+
+    def _on_key_saved(self, _win, key_path: str) -> None:
+        if self._repo is None:
+            return
+        self._repo.signed_by = key_path
+        self._refresh_signing_row(self._repo)
+        self.emit("repo-saved", self._repo)
+
+    # ------------------------------------------------------------------
+    # Remove
+    # ------------------------------------------------------------------
+
+    def _on_remove_clicked(self, _btn: Gtk.Button) -> None:
+        if self._repo is None:
+            return
+        repo = self._repo
+        dlg = Gtk.Window(
+            title="Remove repository",
+            transient_for=self.get_root(),
+            modal=True,
+            resizable=False,
+            default_width=400,
+        )
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+        box.append(
+            Gtk.Label(
+                label=(
+                    f"Remove {repo.display_name}?\n\n"
+                    f"This will delete {repo.source_file.name} from "
+                    f"/etc/apt/sources.list.d/. This cannot be undone."
+                ),
+                wrap=True,
+                xalign=0,
+                max_width_chars=48,
+            )
+        )
+        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dlg.close())
+        remove_btn = Gtk.Button(label="Remove")
+        remove_btn.add_css_class("destructive-action")
+        remove_btn.connect("clicked", lambda _: (dlg.close(), self._do_remove(repo)))
+        btn_row.append(cancel_btn)
+        btn_row.append(remove_btn)
+        box.append(btn_row)
+        dlg.set_child(box)
+        from .position import center_on_parent
+
+        center_on_parent(dlg)
+        dlg.present()
+
+    def _do_remove(self, repo: Repository) -> None:
+        payload = json.dumps({"action": "write_files", "writes": [], "deletes": [str(repo.source_file)]})
+
+        def _delete() -> None:
+            result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+            if result.returncode == 0:
+                GLib.idle_add(self._on_remove_success, repo)
+            else:
+                GLib.idle_add(self._on_remove_failure, result.stderr.strip())
+
+        threading.Thread(target=_delete, daemon=True).start()
+
+    def _on_remove_success(self, repo: Repository) -> bool:
+        self.emit("repo-removed", repo)
+        return GLib.SOURCE_REMOVE
+
+    def _on_remove_failure(self, message: str) -> bool:
+        self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to remove: {message}", timeout=5))
+        return GLib.SOURCE_REMOVE
 
     # ------------------------------------------------------------------
     # Save

@@ -128,6 +128,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         # --- Detail pane ---
         self._detail_pane = DetailPane(vexpand=True)
         self._detail_pane.connect("repo-saved", self._on_repo_saved)
+        self._detail_pane.connect("repo-removed", self._on_repo_removed)
         split.set_content(self._detail_pane)
 
         # Actions
@@ -140,16 +141,28 @@ class RepomanWindow(Gtk.ApplicationWindow):
         tools = Gio.Menu()
         tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
         tools.append("Check pre-update compatibility…", "win.compat-check")
-        state_mgmt = Gio.Menu()
-        state_mgmt.append("Save…", "win.save-config")
-        state_mgmt.append("Load…", "win.load-config")
-        tools.append_submenu("State Management", state_mgmt)
-        tools.append("Disable All Third-Party Repos…", "win.disable-all-repos")
+        tools.append("Reload repositories (apt update)…", "win.reload-repos")
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
         companion_section.append("Software & Updates", "win.launch-software-properties")
         tools.append_section(None, companion_section)
         model.append_submenu("Tools", tools)
+
+        # Repos — flat sections, no nested submenu (submenu stays open on sibling hover in GTK4)
+        repos_menu = Gio.Menu()
+        repos_menu.append("Refresh repository list", "win.refresh-repos")
+        repos_menu.append("Add Repository…", "win.add-repo")
+        remove_section = Gio.Menu()
+        remove_section.append("Remove Multiple…", "win.remove-multiple-repos")
+        repos_menu.append_section(None, remove_section)
+        state_section = Gio.Menu()
+        state_section.append("Save state…", "win.save-config")
+        state_section.append("Load state…", "win.load-config")
+        repos_menu.append_section(None, state_section)
+        disable_section = Gio.Menu()
+        disable_section.append("Disable All Third-Party Repos…", "win.disable-all-repos")
+        repos_menu.append_section(None, disable_section)
+        model.append_submenu("Repos", repos_menu)
 
         # Help (keyboard shortcuts merged in here; no separate Settings menu)
         help_menu = Gio.Menu()
@@ -199,6 +212,25 @@ class RepomanWindow(Gtk.ApplicationWindow):
         props_action.set_enabled(SOFTWARE_PROPERTIES is not None)
         self.add_action(props_action)
 
+        # Repos menu actions
+        refresh_action = Gio.SimpleAction.new("refresh-repos", None)
+        refresh_action.connect("activate", lambda _a, _p: self._rebuild_sidebar())
+        self.add_action(refresh_action)
+
+        add_action = Gio.SimpleAction.new("add-repo", None)
+        add_action.connect("activate", lambda _a, _p: self._open_add_repo_dialog())
+        self.add_action(add_action)
+
+        self._remove_multiple_action = Gio.SimpleAction.new("remove-multiple-repos", None)
+        self._remove_multiple_action.connect("activate", lambda _a, _p: self._open_remove_multiple_dialog())
+        self._remove_multiple_action.set_enabled(False)
+        self.add_action(self._remove_multiple_action)
+
+        # Reload repos action
+        reload_action = Gio.SimpleAction.new("reload-repos", None)
+        reload_action.connect("activate", lambda _a, _p: self._reload_repos())
+        self.add_action(reload_action)
+
     # ------------------------------------------------------------------
     # Realize / startup
     # ------------------------------------------------------------------
@@ -245,6 +277,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             self._banner.set_revealed(False)
         self._save_config_action.set_enabled(bool(self._repos))
         self._disable_all_action.set_enabled(any(r.enabled for r in self._repos))
+        self._remove_multiple_action.set_enabled(bool(self._repos))
 
     # ------------------------------------------------------------------
     # Search / filter
@@ -299,6 +332,22 @@ class RepomanWindow(Gtk.ApplicationWindow):
                 row.refresh(repo)
                 break
         self._update_banner()
+
+    def _on_repo_removed(self, _pane: DetailPane, _repo: Repository) -> None:
+        self._rebuild_sidebar()
+        self._toast_overlay.add_toast(Adw.Toast(title="Repository removed", timeout=3))
+
+    def _rebuild_sidebar(self, *, select_file: Path | None = None) -> None:
+        """Reload repos from disk; optionally select a row; otherwise clear the detail pane."""
+        self._repos = self._parser.load_all()
+        self._on_repos_loaded(self._repos)
+        if select_file:
+            for row in self._rows:
+                if row.repo.source_file == select_file:
+                    self._list_box.select_row(row)
+                    self._detail_pane.show_repo(row.repo)
+                    return
+        self._detail_pane.clear()
 
     # ------------------------------------------------------------------
     # Disable all third-party repos
@@ -388,6 +437,190 @@ class RepomanWindow(Gtk.ApplicationWindow):
     def _launch(self, cmd: str | None) -> None:
         if cmd:
             subprocess.Popen([cmd])
+
+    # ------------------------------------------------------------------
+    # Add / Remove repos
+    # ------------------------------------------------------------------
+
+    def _open_add_repo_dialog(self) -> None:
+        from .add_repo_dialog import AddRepoDialog
+
+        dlg = AddRepoDialog(transient_for=self)
+        dlg.connect("repo-added", self._on_repo_added)
+        dlg.present()
+
+    def _on_repo_added(self, _dlg, repo: Repository) -> None:
+        self._rebuild_sidebar(select_file=repo.source_file)
+        self._toast_overlay.add_toast(Adw.Toast(title="Repository added", timeout=3))
+
+    def _open_remove_multiple_dialog(self) -> None:
+        if not self._repos:
+            return
+        repos = self._repos
+
+        dlg = Gtk.Window(
+            title="Remove repositories",
+            transient_for=self,
+            modal=True,
+            resizable=False,
+            default_width=500,
+            default_height=460,
+        )
+        outer = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+
+        scroll = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        group = Adw.PreferencesGroup(description=f"{len(repos)} repositories — select those to permanently delete")
+        checks: list[tuple[Repository, Gtk.CheckButton]] = []
+        for repo in repos:
+            row = Adw.ActionRow(title=repo.display_name, subtitle=repo.uris[0] if repo.uris else "")
+            check = Gtk.CheckButton()
+            check.connect("toggled", lambda _cb, btn=None: _update_remove_btn())
+            row.add_prefix(check)
+            row.set_activatable_widget(check)
+            group.add(row)
+            checks.append((repo, check))
+
+        list_box_wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        list_box_wrapper.append(group)
+        scroll.set_child(list_box_wrapper)
+        outer.append(scroll)
+
+        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dlg.close())
+        self._remove_sel_btn = Gtk.Button(label="Remove 0 selected")
+        self._remove_sel_btn.add_css_class("destructive-action")
+        self._remove_sel_btn.set_sensitive(False)
+        current_row = self._list_box.get_selected_row()
+        current_file = current_row.repo.source_file if current_row else None
+        self._remove_sel_btn.connect("clicked", lambda _: (dlg.close(), self._do_remove_multiple(checks, current_file)))
+        btn_row.append(cancel_btn)
+        btn_row.append(self._remove_sel_btn)
+        outer.append(btn_row)
+
+        def _update_remove_btn() -> None:
+            count = sum(1 for _, cb in checks if cb.get_active())
+            self._remove_sel_btn.set_label(f"Remove {count} {'repository' if count == 1 else 'repositories'}")
+            self._remove_sel_btn.set_sensitive(count > 0)
+
+        dlg.set_child(outer)
+        center_on_parent(dlg)
+        dlg.present()
+
+    def _do_remove_multiple(self, checks: list[tuple[Repository, Gtk.CheckButton]], current_file: Path | None) -> None:
+        to_delete = [repo for repo, cb in checks if cb.get_active()]
+        if not to_delete:
+            return
+        deleted_files = {r.source_file for r in to_delete}
+        keep_file = current_file if current_file not in deleted_files else None
+        deletes = [str(r.source_file) for r in to_delete]
+        payload = json.dumps({"action": "write_files", "writes": [], "deletes": deletes})
+
+        def _delete() -> None:
+            result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+            if result.returncode == 0:
+                GLib.idle_add(self._on_remove_multiple_success, len(to_delete), keep_file)
+            else:
+                GLib.idle_add(
+                    self._toast_overlay.add_toast,
+                    Adw.Toast(title=f"Failed to remove: {result.stderr.strip()}", timeout=5),
+                )
+
+        threading.Thread(target=_delete, daemon=True).start()
+
+    def _on_remove_multiple_success(self, count: int, keep_file: Path | None) -> bool:
+        self._rebuild_sidebar(select_file=keep_file)
+        self._toast_overlay.add_toast(
+            Adw.Toast(
+                title=f"Removed {count} {'repository' if count == 1 else 'repositories'}",
+                timeout=3,
+            )
+        )
+        return GLib.SOURCE_REMOVE
+
+    # ------------------------------------------------------------------
+    # Reload repositories
+    # ------------------------------------------------------------------
+
+    def _reload_repos(self) -> None:
+        self._toast_overlay.add_toast(Adw.Toast(title="Updating repositories…", timeout=0))
+        try:
+            gi.require_version("PackageKitGlib", "1.0")
+            from gi.repository import PackageKitGlib
+
+            def _do_refresh() -> None:
+                try:
+                    client = PackageKitGlib.Client.new()
+                    results = client.refresh_cache(False, None, None, None)
+                    exit_code = results.get_exit_code()
+                    if exit_code == PackageKitGlib.ExitEnum.SUCCESS:
+                        GLib.idle_add(self._on_reload_success)
+                    else:
+                        GLib.idle_add(self._on_reload_failure, f"PackageKit exit: {exit_code.value_name}")
+                except Exception as exc:
+                    GLib.idle_add(self._on_reload_failure, str(exc))
+
+            threading.Thread(target=_do_refresh, daemon=True).start()
+        except Exception:
+            self._run_apt_update_fallback()
+
+    def _run_apt_update_fallback(self) -> None:
+        def _do_update() -> None:
+            result = subprocess.run(
+                [PKEXEC, "/usr/bin/apt-get", "-q", "update"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                GLib.idle_add(self._on_reload_success)
+            else:
+                GLib.idle_add(self._on_reload_failure, (result.stdout + result.stderr).strip())
+
+        threading.Thread(target=_do_update, daemon=True).start()
+
+    def _on_reload_success(self) -> bool:
+        self._toast_overlay.add_toast(Adw.Toast(title="Repositories updated", timeout=3))
+        return GLib.SOURCE_REMOVE
+
+    def _on_reload_failure(self, message: str) -> bool:
+        dlg = Gtk.Window(
+            title="Update failed",
+            transient_for=self,
+            modal=True,
+            resizable=False,
+            default_width=440,
+        )
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+        scroll = Gtk.ScrolledWindow(
+            height_request=180,
+            hscrollbar_policy=Gtk.PolicyType.NEVER,
+        )
+        lbl = Gtk.Label(label=message, wrap=True, xalign=0, selectable=True)
+        scroll.set_child(lbl)
+        box.append(scroll)
+        btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
+        ok_btn = Gtk.Button(label="OK")
+        ok_btn.connect("clicked", lambda _: dlg.close())
+        btn_row.append(ok_btn)
+        box.append(btn_row)
+        dlg.set_child(box)
+        center_on_parent(dlg)
+        dlg.present()
+        return GLib.SOURCE_REMOVE
 
     # ------------------------------------------------------------------
     # Wizard
@@ -573,9 +806,11 @@ class RepomanWindow(Gtk.ApplicationWindow):
             f"{'was' if n == 1 else 'were'} not found on this system."
         )
         if has_signed_by:
+            paths = sorted({m["signed_by"] for m in missing if m.get("signed_by")})
+            path_list = "\n".join(f"  • {p}" for p in paths)
             body += (
-                "\n\nSome of these repositories reference GPG signing keys that may not "
-                "be installed. You may need to add the keys manually after creating them."
+                f"\n\nThe following GPG keyring files will be needed:\n{path_list}"
+                "\n\nYou may need to install these keys manually."
             )
 
         dlg = Gtk.Window(

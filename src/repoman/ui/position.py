@@ -29,10 +29,17 @@ def center_on_parent(window: Gtk.Window) -> None:
 
 
 def _win_size(window: Gtk.Window) -> tuple[int, int]:
-    """Return the window's allocated size, falling back to its requested default."""
+    """Return the window's allocated size, falling back to preferred natural size."""
     w, h = window.get_width(), window.get_height()
     if w == 0 or h == 0:
         w, h = window.get_default_size()
+    # default_height=-1 means content-sized; measure natural preferred size instead
+    if w <= 0 or h <= 0:
+        _, nat = window.get_preferred_size()
+        if w <= 0:
+            w = nat.width
+        if h <= 0:
+            h = nat.height
     return w, h
 
 

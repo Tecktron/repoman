@@ -1,0 +1,447 @@
+from __future__ import annotations
+
+import json
+import logging
+import re
+import subprocess
+import threading
+from pathlib import Path
+from urllib.parse import urlparse
+
+_log = logging.getLogger(__name__)
+
+import gi
+from debian.deb822 import Deb822
+
+gi.require_version("Adw", "1")
+gi.require_version("Gtk", "4.0")
+from gi.repository import Adw, GLib, GObject, Gtk
+
+from .. import gpg
+from ..models import FileFormat, Repository
+from ..paths import PKEXEC, POLKIT_HELPER
+from ..writer import repo_to_deb822
+from .position import center_on_parent
+
+_SOURCES_DIR = Path("/etc/apt/sources.list.d")
+_KEYRINGS_DIR = Path("/usr/share/keyrings")
+
+# One-line format: deb[-src] [opts] URI suite [components...]
+_ONELINE_RE = re.compile(
+    r"^(deb(?:-src)?)\s+(?:\[([^\]]*)\]\s+)?(\S+)\s+(\S+)(?:\s+(.+))?$",
+    re.IGNORECASE,
+)
+
+
+def _uri_to_source_filename(uri: str) -> str:
+    host = urlparse(uri).netloc or uri
+    sanitized = re.sub(r"[^a-z0-9]+", "-", host.lower()).strip("-")
+    return f"{sanitized}.sources"
+
+
+def _unique_source_path(name: str) -> Path:
+    path = _SOURCES_DIR / name
+    if not path.exists():
+        return path
+    stem = path.stem
+    for i in range(1, 100):
+        candidate = _SOURCES_DIR / f"{stem}-{i}.sources"
+        if not candidate.exists():
+            return candidate
+    return path
+
+
+def _uri_to_key_filename(uri: str) -> str:
+    host = urlparse(uri).netloc or uri
+    sanitized = re.sub(r"[^a-z0-9]+", "-", host.lower()).strip("-")
+    return f"{sanitized}.gpg"
+
+
+def _parse_source_block(text: str) -> dict | None:
+    """Parse a deb one-liner or DEB822 block into a field dict. Returns None on failure."""
+    text = text.strip()
+    if not text:
+        return None
+
+    # Try DEB822 first (has colons in field names)
+    if ":" in text:
+        try:
+            stanza = Deb822(text)
+            uris = stanza.get("URIs", "").split() or stanza.get("URI", "").split()
+            types = stanza.get("Types", "deb").split()
+            suites = stanza.get("Suites", "").split() or stanza.get("Suite", "").split()
+            components = stanza.get("Components", "").split() or stanza.get("Component", "").split()
+            enabled_str = stanza.get("Enabled", "yes").lower()
+            signed_by = stanza.get("Signed-By", "").strip() or None
+            description = stanza.get("X-Repolib-Name") or stanza.get("Description") or None
+            if uris:
+                return {
+                    "types": types,
+                    "uris": uris,
+                    "suites": suites,
+                    "components": components,
+                    "enabled": enabled_str not in ("no", "false", "0"),
+                    "signed_by": signed_by,
+                    "description": description,
+                }
+        except Exception:
+            _log.debug("DEB822 parse failed", exc_info=True)
+
+    # Try one-line format
+    m = _ONELINE_RE.match(text)
+    if m:
+        type_str, options_str, uri, suite, components_str = m.groups()
+        types = [type_str.lower()]
+        components = components_str.split() if components_str else []
+        signed_by = None
+        if options_str:
+            for opt in options_str.split():
+                if opt.startswith("signed-by="):
+                    signed_by = opt[len("signed-by=") :]
+        return {
+            "types": types,
+            "uris": [uri],
+            "suites": [suite],
+            "components": components,
+            "enabled": True,
+            "signed_by": signed_by,
+            "description": None,
+        }
+
+    return None
+
+
+class AddRepoDialog(Gtk.Window):
+    """
+    Two-tab dialog for adding a new APT repository.
+
+    Tab 1 (Auto): paste a deb one-liner or DEB822 block + optional GPG key URL.
+    Tab 2 (Manual): fill individual fields.
+
+    Emits "repo-added" with the new Repository object on success.
+    """
+
+    __gtype_name__ = "RepomanAddRepoDialog"
+
+    repo_added = GObject.Signal("repo-added", arg_types=(object,))
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(
+            title="Add Repository",
+            modal=True,
+            resizable=False,
+            default_width=520,
+            **kwargs,
+        )
+        self._build_ui()
+        center_on_parent(self)
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _build_ui(self) -> None:
+        outer = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=0,
+        )
+
+        self._notebook = Gtk.Notebook()
+        self._notebook.set_margin_top(12)
+        self._notebook.set_margin_bottom(0)
+        self._notebook.set_margin_start(12)
+        self._notebook.set_margin_end(12)
+        self._notebook.connect("switch-page", self._on_tab_switched)
+
+        # Tab 1 — Auto
+        auto_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=6,
+            margin_end=6,
+        )
+        auto_box.append(
+            Gtk.Label(
+                label="Paste a sources line (deb …) or a full DEB822 block:",
+                xalign=0,
+            )
+        )
+        auto_scroll = Gtk.ScrolledWindow(
+            hscrollbar_policy=Gtk.PolicyType.NEVER,
+            vscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+            height_request=130,
+        )
+        auto_scroll.add_css_class("card")
+        self._auto_text = Gtk.TextView(
+            monospace=True,
+            wrap_mode=Gtk.WrapMode.WORD_CHAR,
+            margin_top=6,
+            margin_bottom=6,
+            margin_start=6,
+            margin_end=6,
+        )
+        auto_scroll.set_child(self._auto_text)
+        auto_box.append(auto_scroll)
+
+        auto_key_group = Adw.PreferencesGroup()
+        self._auto_key_row = Adw.EntryRow(title="GPG key URL (optional)")
+        self._auto_key_row.set_input_purpose(Gtk.InputPurpose.URL)
+        auto_key_group.add(self._auto_key_row)
+        auto_box.append(auto_key_group)
+
+        self._auto_error_lbl = Gtk.Label(xalign=0, wrap=True, max_width_chars=55)
+        self._auto_error_lbl.add_css_class("warning")
+        self._auto_error_lbl.set_visible(False)
+        auto_box.append(self._auto_error_lbl)
+
+        self._notebook.append_page(auto_box, Gtk.Label(label="Auto"))
+
+        # Tab 2 — Manual
+        manual_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=6,
+            margin_end=6,
+        )
+        fields_group = Adw.PreferencesGroup()
+        self._uri_row = Adw.EntryRow(title="Repository URI")
+        self._uri_row.set_input_purpose(Gtk.InputPurpose.URL)
+        self._uri_row.connect("changed", self._on_manual_changed)
+        fields_group.add(self._uri_row)
+
+        self._suite_row = Adw.EntryRow(title="Suite / Codename")
+        fields_group.add(self._suite_row)
+
+        self._components_row = Adw.EntryRow(title="Components")
+        self._components_row.set_text("main")
+        fields_group.add(self._components_row)
+
+        self._desc_row = Adw.EntryRow(title="Name / Description (optional)")
+        fields_group.add(self._desc_row)
+
+        self._key_url_row = Adw.EntryRow(title="GPG key URL (optional)")
+        self._key_url_row.set_input_purpose(Gtk.InputPurpose.URL)
+        self._key_url_row.connect("changed", self._on_key_url_changed)
+        fields_group.add(self._key_url_row)
+
+        self._signed_by_row = Adw.EntryRow(title="Signing key path (auto-filled from key URL)")
+        fields_group.add(self._signed_by_row)
+
+        self._deb_src_row = Adw.SwitchRow(title="Also include source packages (deb-src)")
+        fields_group.add(self._deb_src_row)
+
+        self._enabled_row = Adw.SwitchRow(title="Enabled")
+        self._enabled_row.set_active(True)
+        fields_group.add(self._enabled_row)
+
+        manual_box.append(fields_group)
+
+        self._manual_error_lbl = Gtk.Label(xalign=0, wrap=True, max_width_chars=55)
+        self._manual_error_lbl.add_css_class("warning")
+        self._manual_error_lbl.set_visible(False)
+        manual_box.append(self._manual_error_lbl)
+
+        self._notebook.append_page(manual_box, Gtk.Label(label="Manual"))
+
+        outer.append(self._notebook)
+
+        # Shared button row
+        btn_box = Gtk.Box(
+            spacing=6,
+            halign=Gtk.Align.END,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
+        )
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: self.close())
+        self._add_btn = Gtk.Button(label="Add Repository")
+        self._add_btn.add_css_class("suggested-action")
+        self._add_btn.set_sensitive(False)
+        self._add_btn.connect("clicked", self._on_add_clicked)
+        btn_box.append(cancel_btn)
+        btn_box.append(self._add_btn)
+        outer.append(Gtk.Separator())
+        outer.append(btn_box)
+
+        self.set_child(outer)
+
+    # ------------------------------------------------------------------
+    # Sensitivity
+    # ------------------------------------------------------------------
+
+    def _on_tab_switched(self, _nb, _page, page_num: int) -> None:
+        if page_num == 0:
+            # Auto tab: always allow trying (validation at submit)
+            self._add_btn.set_sensitive(True)
+        else:
+            self._update_manual_sensitivity()
+
+    def _on_manual_changed(self, _row) -> None:
+        self._update_manual_sensitivity()
+
+    def _update_manual_sensitivity(self) -> None:
+        self._add_btn.set_sensitive(bool(self._uri_row.get_text().strip()))
+
+    def _on_key_url_changed(self, _row) -> None:
+        url = self._key_url_row.get_text().strip()
+        if url:
+            host = urlparse(url).netloc or url
+            sanitized = re.sub(r"[^a-z0-9]+", "-", host.lower()).strip("-")
+            self._signed_by_row.set_text(f"{_KEYRINGS_DIR}/{sanitized}.gpg")
+            self._signed_by_row.set_sensitive(False)
+        else:
+            self._signed_by_row.set_text("")
+            self._signed_by_row.set_sensitive(True)
+
+    # ------------------------------------------------------------------
+    # Submit
+    # ------------------------------------------------------------------
+
+    def _on_add_clicked(self, _btn: Gtk.Button) -> None:
+        self._add_btn.set_sensitive(False)
+        self._add_btn.set_label("Adding…")
+        self._auto_error_lbl.set_visible(False)
+        self._manual_error_lbl.set_visible(False)
+        threading.Thread(target=self._do_add, daemon=True).start()
+
+    def _do_add(self) -> None:
+        page = self._notebook.get_current_page()
+        if page == 0:
+            self._do_add_auto()
+        else:
+            self._do_add_manual()
+
+    # --- Auto tab ---
+
+    def _do_add_auto(self) -> None:
+        buf = self._auto_text.get_buffer()
+        text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
+        fields = _parse_source_block(text)
+        if not fields:
+            GLib.idle_add(self._fail_auto, "Could not parse the pasted text. Please check the format.")
+            return
+
+        key_url = self._auto_key_row.get_text().strip()
+        self._submit_fields(fields, key_url)
+
+    # --- Manual tab ---
+
+    def _do_add_manual(self) -> None:
+        uri = self._uri_row.get_text().strip()
+        if not uri:
+            GLib.idle_add(self._fail_manual, "Repository URI is required.")
+            return
+
+        types = ["deb"]
+        if self._deb_src_row.get_active():
+            types.append("deb-src")
+
+        fields = {
+            "types": types,
+            "uris": [uri],
+            "suites": self._suite_row.get_text().split(),
+            "components": self._components_row.get_text().split(),
+            "enabled": self._enabled_row.get_active(),
+            "signed_by": self._signed_by_row.get_text().strip() or None,
+            "description": self._desc_row.get_text().strip() or None,
+        }
+        key_url = self._key_url_row.get_text().strip()
+        self._submit_fields(fields, key_url)
+
+    # --- Shared submission logic ---
+
+    def _submit_fields(self, fields: dict, key_url: str) -> None:
+        """Build and write the new repo. Runs in a background thread."""
+        uri = fields["uris"][0] if fields["uris"] else ""
+        source_path = _unique_source_path(_uri_to_source_filename(uri))
+
+        repo = Repository(
+            source_file=source_path,
+            file_format=FileFormat.DEB822,
+            types=fields.get("types") or ["deb"],
+            uris=fields.get("uris") or [],
+            suites=fields.get("suites") or [],
+            components=fields.get("components") or [],
+            enabled=fields.get("enabled", True),
+            description=fields.get("description"),
+            signed_by=fields.get("signed_by"),
+        )
+
+        writes = []
+        key_error: str | None = None
+
+        # GPG key handling
+        if key_url:
+            key_bytes, err = gpg.fetch_key(key_url)
+            if err or not key_bytes:
+                key_error = err or "Empty response from key URL"
+            else:
+                key_filename = _uri_to_key_filename(key_url)
+                key_path = str(_KEYRINGS_DIR / key_filename)
+                repo.signed_by = key_path
+                writes.append(
+                    {
+                        "path": key_path,
+                        "content": gpg.key_to_b64(key_bytes),
+                        "encoding": "base64",
+                    }
+                )
+        elif not repo.signed_by and repo.is_ppa and repo.ppa_owner and repo.ppa_name:
+            key_bytes, err = gpg.fetch_ppa_key(repo.ppa_owner, repo.ppa_name)
+            if key_bytes and not err:
+                key_filename = f"{repo.ppa_owner}-{repo.ppa_name}.gpg"
+                key_path = str(_KEYRINGS_DIR / key_filename)
+                repo.signed_by = key_path
+                writes.append(
+                    {
+                        "path": key_path,
+                        "content": gpg.key_to_b64(key_bytes),
+                        "encoding": "base64",
+                    }
+                )
+
+        # .sources file write
+        writes.append({"path": str(source_path), "content": repo_to_deb822(repo)})
+
+        payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
+        result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+
+        if result.returncode == 0:
+            GLib.idle_add(self._on_add_success, repo, key_error)
+        else:
+            GLib.idle_add(
+                self._fail_auto if self._notebook.get_current_page() == 0 else self._fail_manual, result.stderr.strip()
+            )
+
+    def _on_add_success(self, repo: Repository, key_warning: str | None) -> bool:
+        if key_warning:
+            # Warn but still close — repo was added, just without the key
+            lbl = self._auto_error_lbl if self._notebook.get_current_page() == 0 else self._manual_error_lbl
+            lbl.set_label(f"Key fetch failed: {key_warning}. Repository added without signing.")
+            lbl.set_visible(True)
+            self._add_btn.set_sensitive(True)
+            self._add_btn.set_label("Add Repository")
+        self.emit("repo-added", repo)
+        if not key_warning:
+            self.close()
+        return GLib.SOURCE_REMOVE
+
+    def _fail_auto(self, message: str) -> bool:
+        self._auto_error_lbl.set_label(message)
+        self._auto_error_lbl.set_visible(True)
+        self._add_btn.set_sensitive(True)
+        self._add_btn.set_label("Add Repository")
+        return GLib.SOURCE_REMOVE
+
+    def _fail_manual(self, message: str) -> bool:
+        self._manual_error_lbl.set_label(message)
+        self._manual_error_lbl.set_visible(True)
+        self._add_btn.set_sensitive(True)
+        self._add_btn.set_label("Add Repository")
+        return GLib.SOURCE_REMOVE

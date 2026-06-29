@@ -8,6 +8,7 @@ Supported actions:
   enable_repos  — update Enabled/Suites fields in existing .sources files
   write_files   — write arbitrary content to allowed paths, with optional deletes
 """
+import base64
 import json
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ from debian.deb822 import Deb822
 _ALLOWED = frozenset([
     Path("/etc/apt/sources.list.d"),
     Path("/etc/update-manager/release-upgrades.d"),
+    Path("/usr/share/keyrings"),
 ])
 
 
@@ -78,16 +80,20 @@ def _apply_write_files(payload: dict) -> None:
     for entry in payload.get("writes", []):
         path = Path(entry["path"])
         content = entry["content"]
-
-        # Validate DEB822 content before writing
-        try:
-            Deb822(content)
-        except Exception as exc:
-            print(f"ERROR: invalid DEB822 content for {path}: {exc}", file=sys.stderr)
-            sys.exit(1)
+        encoding = entry.get("encoding", "text")
 
         tmp = path.with_suffix(".tmp")
-        tmp.write_text(content, encoding="utf-8")
+        if encoding == "base64":
+            tmp.write_bytes(base64.b64decode(content))
+        else:
+            # Validate DEB822 for .sources files only
+            if path.suffix == ".sources":
+                try:
+                    Deb822(content)
+                except Exception as exc:
+                    print(f"ERROR: invalid DEB822 content for {path}: {exc}", file=sys.stderr)
+                    sys.exit(1)
+            tmp.write_text(content, encoding="utf-8")
         tmp.rename(path)
         print(f"OK write: {path}")
 

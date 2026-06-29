@@ -82,7 +82,7 @@ ruff format --check src/              # formatter
 
 ```
 src/repoman/
-  main.py            — RepomanApplication (Adw.Application); --sources-dir flag;
+  main.py            — RepomanApplication (Adw.Application);
                        startup tool check via check_required_tools()
   models.py          — Repository dataclass, WizardState dataclass,
                        FileFormat enum, AvailabilityStatus enum
