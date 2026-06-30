@@ -24,5 +24,8 @@ There's no maintained tool that:
 - Checks both disabled and silently-failing repos in one pass
 - Lets you annotate repos with notes that don't get stripped on upgrade
 - Gives you a guided workflow to assess and fix everything after an upgrade
+- Provides a full-time GUI for adding, removing, and editing repositories day-to-day — no more editing `.sources` files manually
+- Manages GPG signing keys alongside the repos they authenticate
+- Lets you save and restore your complete repo configuration across reinstalls and machines
 
 repoman is that tool.
