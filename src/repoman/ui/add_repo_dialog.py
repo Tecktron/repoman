@@ -65,6 +65,7 @@ class AddRepoDialog(Gtk.Window):
             default_width=520,
             **kwargs,
         )
+        self.set_icon_name("io.github.Tecktron.repoman")
         self._build_ui()
         center_on_parent(self)
 

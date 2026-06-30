@@ -43,6 +43,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_height=600,
             **kwargs,
         )
+        self.set_icon_name("io.github.Tecktron.repoman")
         self._parser = Parser()
         self._repos: list[Repository] = []
         self._wizard: RepomanWizardDialog | None = None
@@ -364,6 +365,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             resizable=False,
             default_width=380,
         )
+        dlg.set_icon_name("io.github.Tecktron.repoman")
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
@@ -466,6 +468,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_width=500,
             default_height=460,
         )
+        dlg.set_icon_name("io.github.Tecktron.repoman")
         outer = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
@@ -597,6 +600,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             resizable=False,
             default_width=440,
         )
+        dlg.set_icon_name("io.github.Tecktron.repoman")
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
@@ -646,6 +650,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
                 resizable=False,
                 default_width=360,
             )
+            dlg.set_icon_name("io.github.Tecktron.repoman")
             box = Gtk.Box(
                 orientation=Gtk.Orientation.VERTICAL,
                 spacing=12,
@@ -820,6 +825,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             resizable=False,
             default_width=400,
         )
+        dlg.set_icon_name("io.github.Tecktron.repoman")
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
@@ -892,6 +898,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_width=420,
             resizable=False,
         )
+        win.set_icon_name("io.github.Tecktron.repoman")
         center_on_parent(win)
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
@@ -925,6 +932,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             default_width=360,
             resizable=False,
         )
+        win.set_icon_name("io.github.Tecktron.repoman")
         center_on_parent(win)
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,

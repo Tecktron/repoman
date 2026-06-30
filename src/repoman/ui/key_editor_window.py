@@ -53,6 +53,7 @@ class KeyAddWindow(Gtk.Window):
             default_width=540,
             **kwargs,
         )
+        self.set_icon_name("io.github.Tecktron.repoman")
         self._repo = repo
         self._fetched_bytes: bytes | None = None
         self._selected_file: str | None = None
@@ -399,6 +400,7 @@ class KeyEditWindow(Gtk.Window):
             default_width=540,
             **kwargs,
         )
+        self.set_icon_name("io.github.Tecktron.repoman")
         self._repo = repo
         self._original_signed_by = repo.signed_by or ""
         signed_by = self._original_signed_by

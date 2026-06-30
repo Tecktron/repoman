@@ -43,6 +43,7 @@ class RepomanWizardDialog(Gtk.Window):
             default_height=560,
             **kwargs,
         )
+        self.set_icon_name("io.github.Tecktron.repoman")
         center_on_parent(self)
         self._closing = False
         self._state = WizardState(
