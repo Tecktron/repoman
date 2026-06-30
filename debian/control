@@ -1,0 +1,35 @@
+Source: repoman
+Section: admin
+Priority: optional
+Maintainer: Tecktron Studios <craig@craigiscool.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools
+Standards-Version: 4.7.0
+Homepage: https://github.com/Tecktron/repoman
+Rules-Requires-Root: no
+
+Package: repoman
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-gi,
+         gir1.2-gtk-4.0,
+         gir1.2-adw-1 (>= 1.5),
+         gir1.2-packagekitglib-1.0,
+         python3-debian,
+         python3-launchpadlib,
+         python3-requests,
+         python3-xlib,
+         policykit-1,
+         lsb-release
+Recommends: software-properties-gtk | gnome-software
+Description: GTK4 APT repository manager for Ubuntu/Xubuntu
+ Repo Man is a graphical tool for managing third-party APT repositories.
+ It provides an upgrade wizard that checks repository availability for a
+ new Ubuntu release and updates Suites fields in one authenticated step.
+ .
+ Features include a pre-upgrade compatibility checker, GPG key management,
+ add/remove repository dialogs, and save/restore of repository state across
+ upgrades via .repoman config files.

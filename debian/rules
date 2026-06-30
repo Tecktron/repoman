@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME = repoman
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Polkit helper — not a Python module, installed separately
+	install -d debian/repoman/usr/lib/repoman
+	install -m 755 polkit-helper debian/repoman/usr/lib/repoman/polkit-helper

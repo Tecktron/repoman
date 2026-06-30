@@ -13,7 +13,7 @@ _SOURCES_DIR = Path("/etc/apt/sources.list.d")
 _USER_AGNOSTIC_CONF = Path.home() / ".config" / "repoman" / "suite-agnostic.conf"
 _SYSTEM_AGNOSTIC_CONF = Path("/usr/share/repoman/suite-agnostic.conf")
 # Development fallback: config bundled alongside this source tree
-_DEV_AGNOSTIC_CONF = Path(__file__).parent.parent.parent / "data" / "repoman-suite-agnostic.conf"
+_DEV_AGNOSTIC_CONF = Path(__file__).parent.parent.parent / "data" / "suite-agnostic.conf"
 
 # URIs from these hostnames are managed by Ubuntu/Canonical directly and
 # should never be shown, edited, or disabled by repoman.

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.Tecktron.repoman</id>
+
+  <name>Repo Man</name>
+  <summary>Manage APT repositories for system upgrades</summary>
+
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      Repo Man is a GTK4 graphical tool for managing third-party APT repositories
+      on Ubuntu and Xubuntu. It helps you review, update, and re-enable repositories
+      after a system upgrade, and provides an upgrade wizard that automatically
+      migrates third-party sources to your new Ubuntu release.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Browse and edit all third-party APT repositories</li>
+      <li>Upgrade wizard: checks PPA and repo availability for a target release</li>
+      <li>Pre-upgrade compatibility checker with per-PPA availability details</li>
+      <li>Add and remove repositories with GPG key management</li>
+      <li>Save and restore repository state across upgrades (.repoman files)</li>
+      <li>Reload repository metadata (apt update) from within the app</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.Tecktron.repoman.desktop</launchable>
+
+  <url type="homepage">https://github.com/Tecktron/repoman</url>
+  <url type="bugtracker">https://github.com/Tecktron/repoman/issues</url>
+
+  <provides>
+    <binary>repoman</binary>
+  </provides>
+
+  <requires>
+    <display_length compare="ge">800</display_length>
+  </requires>
+
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+
+  <releases>
+    <release version="0.1.0" date="2026-06-29">
+      <description>
+        <p>Initial release.</p>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1"/>
+</component>

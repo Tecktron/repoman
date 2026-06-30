@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        chmod 755 /usr/lib/repoman/polkit-helper
+        glib-compile-schemas /usr/share/glib-2.0/schemas/ || true
+        gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+        ;;
+esac
+
+#DEBHELPER#

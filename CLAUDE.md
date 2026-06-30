@@ -146,7 +146,7 @@ polkit-helper        — Privileged write helper (run via pkexec).
                        Writes atomically: .tmp → rename.
 data/
   io.github.Tecktron.repoman.policy  — polkit policy; auth_admin_keep
-  repoman-suite-agnostic.conf        — dev fallback agnostic suite names
+  suite-agnostic.conf        — dev fallback agnostic suite names
 ```
 
 ---
@@ -179,7 +179,7 @@ Threaded through all wizard pages: `candidate_repos`, `target_codename`,
 
 - **Official Ubuntu URIs filtered out**: `archive.ubuntu.com`, `security.ubuntu.com`,
   `ports.ubuntu.com`, `esm.ubuntu.com` — never shown in repoman.
-- **Suite-agnostic detection**: suites in `data/repoman-suite-agnostic.conf`
+- **Suite-agnostic detection**: suites in `data/suite-agnostic.conf`
   (falls back to built-ins: stable, main, testing, sid, etc.) OR any suite with
   non-alpha characters (focal-security, noble/updates). Sets `SUITE_AGNOSTIC`.
 - **Description sources** (DEB822, in priority order):
