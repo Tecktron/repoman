@@ -8,6 +8,8 @@ copyright: Copyright &copy; Tecktron Multimedia Enterprises
 theme:
   name: material
   custom_dir: overrides
+  logo: assets/logo.png
+  favicon: assets/favicon.png
   palette:
     # Locked to dark — the toxic-green/red poster aesthetic doesn't
     # survive a light-mode toggle, so there isn't one.

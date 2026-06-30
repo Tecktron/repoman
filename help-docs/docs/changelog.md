@@ -1,7 +1,29 @@
 # Changelog
 
-All notable changes to repoman will be documented here.
+All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
-- Initial release
+Initial public release — see below.
+
+---
+
+## 0.1.0 — 2026-06-29
+
+First release.
+
+### Features
+
+- Scans `/etc/apt/sources.list.d/` and lists all third-party repositories
+- Detects disabled repositories and stale codenames after Ubuntu upgrades
+- Upgrade wizard: select, check availability, confirm, apply in one polkit prompt
+- Pre-upgrade compatibility checker with Launchpad PPA enrichment
+- Add repository (Auto tab: paste one-liner or DEB822 block; Manual tab: individual fields)
+- Remove single repository or multiple repositories at once
+- GPG signing key editor (fetch, browse, paste)
+- Edit repository details: description, suite, components, enabled state, signing key path
+- Annotations: descriptions stored as `X-Repolib-Name:` in `.sources` files, survive upgrades
+- Legacy `.list` → DEB822 `.sources` conversion on save
+- State management: save and load `.repoman` snapshots
+- Reload repository metadata via PackageKit (`apt update` equivalent)
+- Privilege separation: GUI runs as normal user, writes via polkit helper
