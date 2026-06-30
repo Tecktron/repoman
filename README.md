@@ -1,6 +1,6 @@
 # Repoman
 
-**Repo Man** — repossessing your PPAs every time Ubuntu upgrades.
+**Repo Man** — Repossess your PPAs.
 
 A GTK4 + libadwaita graphical tool for managing third-party APT repositories on Ubuntu and Xubuntu. After a release upgrade, repoman checks which of your PPAs and custom repositories are available for the new codename, updates their `Suites:` fields in one authenticated step, and flags anything that needs attention.
 
