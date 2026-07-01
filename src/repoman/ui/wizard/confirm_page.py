@@ -1,3 +1,5 @@
+"""Wizard step 3: review pending changes and apply them via polkit."""
+
 from __future__ import annotations
 
 import json

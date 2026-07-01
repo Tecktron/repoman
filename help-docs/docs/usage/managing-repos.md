@@ -14,7 +14,16 @@ Select a repository to see its fields in the detail pane:
 - **Enabled** — toggle to enable or disable without deleting the file.
 - **Signing key** — the path to the GPG keyring file used to verify packages from this repository.
 
+The detail pane also has two utility buttons at the top right:
+
+- **Copy URI** — copies the repository's primary URI to the clipboard.
+- **Open in browser** — opens the repository URI in your default web browser.
+
 Click **Save** to write the changes. A polkit authentication dialog appears because writing to `/etc/apt/sources.list.d/` requires root.
+
+<!-- screenshot: detail-pane-edit -->
+!!! example ""
+    *Screenshot coming soon.*
 
 !!! note "Legacy .list format"
     If a `.list` repository has no description, editing the Name field and saving converts it to DEB822 `.sources` format automatically. The old `.list` file is deleted and the new `.sources` file is written in a single polkit operation.
@@ -61,6 +70,10 @@ When a key URL is provided, the signing key path is filled automatically based o
 
 Click **Add Repository**. If a key URL was provided, the key is downloaded, verified, and written alongside the `.sources` file — both in a single polkit prompt.
 
+<!-- screenshot: add-repo-dialog -->
+!!! example ""
+    *Screenshot coming soon.*
+
 ## Removing a repository
 
 ### Single repository
@@ -92,6 +105,10 @@ Click **Add** to open the key editor. Three ways to provide a key:
 ### Editing a key
 
 Click **Edit** to open the key editor in edit mode. The **Key content** tab shows the current key in ASCII-armored format. The **Update** tab lets you replace the key from a file or URL without changing the path.
+
+<!-- screenshot: key-editor -->
+!!! example ""
+    *Screenshot coming soon.*
 
 ## Disabling all repositories
 

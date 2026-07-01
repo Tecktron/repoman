@@ -16,6 +16,7 @@ dist/
 .pytest_cache/
 .coverage
 help-docs/site/
+sphinx/_build/
 mempalace.yaml
 entities.json
 .claude

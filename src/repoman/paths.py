@@ -1,3 +1,10 @@
+"""System binary discovery and startup validation.
+
+Resolves paths for pkexec, lsb_release, and optional companion tools
+(update-manager, software-properties-gtk) at import time via shutil.which,
+so tests can monkeypatch shutil.which before importing this module.
+"""
+
 from __future__ import annotations
 
 import shutil

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Check style
+        run: ruff check src/
+      - name: Check formatting
+        run: ruff format --check src/
+
+  test:
+    name: Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            python3-gi \
+            gir1.2-glib-2.0 \
+            python3-debian \
+            python3-launchpadlib \
+            python3-requests \
+            python3-xlib
+      - name: Install test runner
+        run: pip install pytest pytest-mock --break-system-packages
+      - name: Run tests
+        run: PYTHONPATH=src python3 -m pytest tests/ -q
+
+  docs-check:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install doc tools
+        run: pip install sphinx furo mkdocs-material
+      - name: Build Sphinx (warnings as errors)
+        run: PYTHONPATH=src sphinx-build -W sphinx sphinx/_build/html
+      - name: Build MkDocs (strict mode)
+        run: |
+          cd help-docs
+          mkdocs build --strict

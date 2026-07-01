@@ -16,6 +16,13 @@ _KEYSERVER_FETCH = "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x{fin
 
 
 def is_ppa_uri(uri: str) -> bool:
+    """Return True if ``uri`` points at a Launchpad PPA host.
+
+    :param uri: Repository URI to test.
+    :type uri: str
+    :returns: True for ``ppa.launchpadcontent.net`` and ``ppa.launchpad.net``.
+    :rtype: bool
+    """
     from urllib.parse import urlparse
 
     return urlparse(uri).netloc in _PPA_HOSTS

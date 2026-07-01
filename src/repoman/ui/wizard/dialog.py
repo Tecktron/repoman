@@ -1,3 +1,9 @@
+"""Upgrade assistant wizard dialog (RepomanWizardDialog).
+
+Wraps an AdwNavigationView with three pages (select → check → confirm).
+Uses Gtk.Window so the WM draws the titlebar with the user's own theme.
+"""
+
 from __future__ import annotations
 
 import gi

@@ -22,6 +22,10 @@ Select a repository in the sidebar. Click the **Name / Description** field in th
 
 repoman writes the description as an `X-Repolib-Name:` field directly in the `.sources` file:
 
+<!-- screenshot: detail-pane-with-description -->
+!!! example ""
+    *Screenshot coming soon.*
+
 ```
 Types: deb
 URIs: https://packages.example.com/ubuntu

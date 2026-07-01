@@ -1,3 +1,10 @@
+"""Save and load .repoman state files (pure JSON, no GTK, fully unit-testable).
+
+File format v1: JSON with version, saved_at, and a repos list.
+Each entry captures enough to reconstruct a Repository and detect drift
+when the same config is loaded on a different machine or after a reinstall.
+"""
+
 from __future__ import annotations
 
 import json

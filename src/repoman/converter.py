@@ -1,3 +1,5 @@
+"""ONE_LINE (.list) to DEB822 (.sources) format converter. Pure — no I/O."""
+
 from __future__ import annotations
 
 from pathlib import Path

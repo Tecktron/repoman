@@ -1,3 +1,10 @@
+"""Main application window (RepomanWindow).
+
+Hosts the sidebar repo list, detail pane, menu bar, upgrade banner,
+and all top-level dialogs. Keyboard shortcuts are wired here at the
+application level so they are active for every window in the process.
+"""
+
 from __future__ import annotations
 
 import json
@@ -36,7 +43,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     __gtype_name__ = "RepomanWindow"
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: object) -> None:
         super().__init__(
             title="Repoman",
             default_width=900,
@@ -50,6 +57,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._rows: list[RepoRow] = []
 
         self._build_ui()
+        self._setup_accels()
         self.connect("realize", self._on_realize)
         center_on_screen(self)
 
@@ -232,11 +240,26 @@ class RepomanWindow(Gtk.ApplicationWindow):
         reload_action.connect("activate", lambda _a, _p: self._reload_repos())
         self.add_action(reload_action)
 
+        # Focus search entry action — used by Ctrl+F accelerator
+        focus_search = Gio.SimpleAction.new("focus-search", None)
+        focus_search.connect("activate", lambda _a, _p: self._search_entry.grab_focus())
+        self.add_action(focus_search)
+
+    def _setup_accels(self) -> None:
+        app = self.get_application()
+        app.set_accels_for_action("win.focus-search", ["<Primary>f"])
+        app.set_accels_for_action("win.upgrade-wizard", ["<Primary>u"])
+        app.set_accels_for_action("win.show-shortcuts", ["<Primary>F1"])
+        app.set_accels_for_action("win.add-repo", ["<Primary>n"])
+        app.set_accels_for_action("win.refresh-repos", ["<Primary>r"])
+        app.set_accels_for_action("win.reload-repos", ["F5"])
+        app.set_accels_for_action("win.save-config", ["<Primary>s"])
+
     # ------------------------------------------------------------------
     # Realize / startup
     # ------------------------------------------------------------------
 
-    def _on_realize(self, _widget) -> None:
+    def _on_realize(self, _widget: Gtk.Widget) -> None:
         GLib.idle_add(self._load_repos)
 
     # ------------------------------------------------------------------
@@ -451,7 +474,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dlg.connect("repo-added", self._on_repo_added)
         dlg.present()
 
-    def _on_repo_added(self, _dlg, repo: Repository) -> None:
+    def _on_repo_added(self, _dlg: Gtk.Window, repo: Repository) -> None:
         self._rebuild_sidebar(select_file=repo.source_file)
         self._toast_overlay.add_toast(Adw.Toast(title="Repository added", timeout=3))
 
@@ -637,6 +660,12 @@ class RepomanWindow(Gtk.ApplicationWindow):
         win.present()
 
     def open_upgrade_wizard(self) -> None:
+        """Open the upgrade assistant wizard, or focus it if already open.
+
+        Shows an informational dialog if no repositories need attention.
+        Resets the network-failure flag before each wizard run so the checker
+        starts fresh rather than silently skipping all checks.
+        """
         if self._wizard is not None:
             self._wizard.present()
             return
@@ -714,7 +743,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dialog.set_initial_folder(Gio.File.new_for_path(str(Path.home())))
         dialog.save(self, None, self._on_save_config_chosen)
 
-    def _on_save_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
+    def _on_save_config_chosen(self, dialog: Gtk.FileDialog, result: Gio.AsyncResult) -> None:
         try:
             gfile = dialog.save_finish(result)
         except GLib.Error:
@@ -739,7 +768,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         dialog.set_filters(store)
         dialog.open(self, None, self._on_load_config_chosen)
 
-    def _on_load_config_chosen(self, dialog: Gtk.FileDialog, result) -> None:
+    def _on_load_config_chosen(self, dialog: Gtk.FileDialog, result: Gio.AsyncResult) -> None:
         try:
             gfile = dialog.open_finish(result)
         except GLib.Error:
@@ -908,7 +937,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             margin_end=24,
             spacing=12,
         )
-        group = Adw.PreferencesGroup(title="Repoman")
+        general_group = Adw.PreferencesGroup(title="General")
         for label, accel in [
             ("Search repositories", "<Primary>f"),
             ("Open upgrade assistant", "<Primary>u"),
@@ -916,8 +945,21 @@ class RepomanWindow(Gtk.ApplicationWindow):
         ]:
             row = Adw.ActionRow(title=label)
             row.add_suffix(Gtk.ShortcutLabel(accelerator=accel))
-            group.add(row)
-        box.append(group)
+            general_group.add(row)
+        box.append(general_group)
+
+        repos_group = Adw.PreferencesGroup(title="Repository management")
+        for label, accel in [
+            ("Add repository", "<Primary>n"),
+            ("Refresh repository list", "<Primary>r"),
+            ("Reload repositories (apt update)", "F5"),
+            ("Save repository state", "<Primary>s"),
+        ]:
+            row = Adw.ActionRow(title=label)
+            row.add_suffix(Gtk.ShortcutLabel(accelerator=accel))
+            repos_group.add(row)
+        box.append(repos_group)
+
         win.set_child(box)
         win.present()
 

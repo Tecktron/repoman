@@ -1,3 +1,10 @@
+"""Ubuntu release info, upgrade target discovery, and PPA availability checks.
+
+Reads /etc/update-manager/release-upgrades and /usr/share/distro-info/ubuntu.csv
+to determine which Ubuntu releases exist and which the user may upgrade to.
+Network functions check Launchpad PPA hosting for codename support.
+"""
+
 from __future__ import annotations
 
 import configparser

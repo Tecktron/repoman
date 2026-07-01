@@ -1,3 +1,5 @@
+"""Application entry point and RepomanApplication (Adw.Application) class."""
+
 from __future__ import annotations
 
 import argparse

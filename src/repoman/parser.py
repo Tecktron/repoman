@@ -1,3 +1,5 @@
+"""APT sources.list.d parser for DEB822 (.sources) and one-line (.list) formats."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -128,6 +130,14 @@ class Parser:
     # ------------------------------------------------------------------
 
     def _parse_deb822(self, path: Path) -> list[Repository]:
+        """Parse a DEB822 .sources file and return all non-official repos found.
+
+        :param path: Absolute path to the .sources file.
+        :type path: Path
+        :returns: Parsed repositories (may be empty if file is unreadable or
+            contains only official Ubuntu entries).
+        :rtype: list[Repository]
+        """
         repos = []
         try:
             text = path.read_text(encoding="utf-8")
@@ -145,6 +155,18 @@ class Parser:
         return repos
 
     def _deb822_stanza_to_repo(self, stanza: Deb822, path: Path) -> Repository | None:
+        """Convert one parsed DEB822 stanza into a Repository, or None to skip it.
+
+        Returns None for stanzas that are missing required fields or whose URIs
+        point at official Ubuntu infrastructure.
+
+        :param stanza: A single parsed DEB822 paragraph.
+        :type stanza: Deb822
+        :param path: Source file path (stored on the returned Repository).
+        :type path: Path
+        :returns: Populated Repository, or None if the stanza should be ignored.
+        :rtype: Repository | None
+        """
         types_raw = stanza.get("Types", "").split()
         uris_raw = stanza.get("URIs", "").split()
         suites = stanza.get("Suites", "").split()
@@ -184,6 +206,16 @@ class Parser:
     # ------------------------------------------------------------------
 
     def _parse_one_line(self, path: Path) -> list[Repository]:
+        """Parse a one-line .list file and return all non-official repos found.
+
+        Lines beginning with ``# deb`` or ``#deb`` are surfaced as disabled repos.
+        All other comment lines are skipped.
+
+        :param path: Absolute path to the .list file.
+        :type path: Path
+        :returns: Parsed repositories (may be empty).
+        :rtype: list[Repository]
+        """
         repos = []
         try:
             text = path.read_text(encoding="utf-8")
@@ -209,6 +241,17 @@ class Parser:
         return repos
 
     def _one_line_to_repo(self, line: str, path: Path, enabled: bool) -> Repository | None:
+        """Parse a single one-line entry into a Repository, or None to skip it.
+
+        :param line: The source line with any leading ``#`` comment marker already stripped.
+        :type line: str
+        :param path: Source file path (stored on the returned Repository).
+        :type path: Path
+        :param enabled: Whether the original line was uncommented (active).
+        :type enabled: bool
+        :returns: Populated Repository, or None if the line is malformed or official.
+        :rtype: Repository | None
+        """
         # Format: deb[-src] [options] uri suite [component...]
         parts = line.split()
         if len(parts) < 3:

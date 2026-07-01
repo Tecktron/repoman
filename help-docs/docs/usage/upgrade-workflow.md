@@ -18,6 +18,10 @@ The first page lists every repository that repoman thinks needs attention. By de
 
 Click **Check availability** when you're satisfied with the selection.
 
+<!-- screenshot: wizard-step1-select -->
+!!! example ""
+    *Screenshot coming soon.*
+
 ## Step 2 — Check availability
 
 repoman checks each selected repository against its source to see whether packages exist for your current Ubuntu release.
@@ -36,6 +40,10 @@ Hover over any icon to see a tooltip with the full status description.
 
 Once all checks resolve, the **Next** button activates. If you navigate back to Step 1 and return, the check results are preserved — the check does not run again.
 
+<!-- screenshot: wizard-step2-checking -->
+!!! example ""
+    *Screenshot coming soon.*
+
 !!! note
     Network checks can take several seconds per repository. If a check times out or fails with a network error, the repository is marked unavailable and skipped.
 
@@ -47,6 +55,10 @@ The confirmation page shows exactly what will happen:
 - **Skipped — not yet available** — repositories that returned unavailable. No changes are made to these files.
 
 If there are no repositories to re-enable (everything is either already current or suite-agnostic), the auth row and the repository groups are hidden, and the button reads **Done**. Clicking Done closes the wizard without making any changes and without a polkit prompt.
+
+<!-- screenshot: wizard-step3-confirm -->
+!!! example ""
+    *Screenshot coming soon.*
 
 ## Applying changes
 

@@ -1,6 +1,6 @@
 site_name: Repoman
 site_description: Repossess your PPAs every time Ubuntu upgrades
-site_url: https://YOURDOMAIN.com  # replace with actual domain
+site_url: https://tecktron.github.io/repoman/
 repo_url: https://github.com/Tecktron/repoman
 repo_name: Tecktron/repoman
 copyright: Copyright &copy; Tecktron Multimedia Enterprises
@@ -46,6 +46,7 @@ nav:
   - Reference:
     - Configuration: reference/config.md
   - Changelog: changelog.md
+  - Developer API Reference: https://tecktron.github.io/repoman/developers/
 
 plugins:
   - search

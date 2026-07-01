@@ -1,3 +1,5 @@
+"""DEB822 serialiser for Repository objects. Pure — no I/O, no GTK."""
+
 from __future__ import annotations
 
 from debian.deb822 import Deb822

@@ -1,3 +1,11 @@
+"""Window positioning helpers for X11 / Xfwm4.
+
+Post-map centering via python-xlib. Known limitation: a brief flicker
+occurs because the WM places the window at its default position before
+the move fires. Pre-realize positioning is the correct fix; deferred.
+All public functions are no-ops on Wayland (GdkX11 / XID not available).
+"""
+
 from __future__ import annotations
 
 import logging

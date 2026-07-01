@@ -1,3 +1,5 @@
+"""Utility helpers: current Ubuntu codename and repo-attention detection."""
+
 from __future__ import annotations
 
 import subprocess

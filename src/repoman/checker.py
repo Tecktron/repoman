@@ -1,3 +1,11 @@
+"""Availability checker: tests repos against a target Ubuntu codename.
+
+Runs entirely in a background thread. Never touches GTK widgets.
+Uses Launchpad API for PPAs and HTTP HEAD for all other repos.
+A single network failure sets a global flag that suppresses further attempts,
+so one DNS outage does not cause a storm of error toasts.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +44,19 @@ class Checker:
     """
 
     def check(self, repo: Repository, codename: str) -> AvailabilityStatus:
+        """Check whether ``repo`` has packages published for ``codename``.
+
+        Suite-agnostic repos always return SUITE_AGNOSTIC without a network call.
+        If the global network-failure flag is set from a previous call, returns
+        UNKNOWN immediately to avoid a cascade of timeouts.
+
+        :param repo: The repository to check.
+        :type repo: Repository
+        :param codename: Ubuntu codename to check against, e.g. ``"noble"``.
+        :type codename: str
+        :returns: Availability status for this repo/codename pair.
+        :rtype: AvailabilityStatus
+        """
         global _network_failed
         if repo.availability == AvailabilityStatus.SUITE_AGNOSTIC:
             return AvailabilityStatus.SUITE_AGNOSTIC

@@ -1,3 +1,5 @@
+"""Data models: Repository, WizardState, FileFormat, and AvailabilityStatus."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -7,13 +9,26 @@ from pathlib import Path
 
 
 class FileFormat(Enum):
+    """On-disk format of an APT source file.
+
+    ONE_LINE repos are automatically converted to DEB822 on the first save
+    that sets a description, because the one-line format has no description field.
+    """
+
     DEB822 = auto()  # .sources
     ONE_LINE = auto()  # .list — auto-converted on first description save
 
 
 class AvailabilityStatus(Enum):
+    """Availability of a repository for a target Ubuntu codename.
+
+    CHECKING is an in-progress sentinel used only by the wizard UI — it is
+    never written back to the Repository object. The background thread transitions
+    directly from UNKNOWN to AVAILABLE, UNAVAILABLE, or (on network failure) UNKNOWN.
+    """
+
     UNKNOWN = auto()  # not yet checked
-    CHECKING = auto()  # in progress
+    CHECKING = auto()  # in progress (wizard UI only — never stored on repo)
     AVAILABLE = auto()  # confirmed for target release
     UNAVAILABLE = auto()  # confirmed not available
     SUITE_AGNOSTIC = auto()  # "stable"-style URL, always passes
@@ -52,6 +67,12 @@ class Repository:
 
     @property
     def display_name(self) -> str:
+        """Human-readable label: description if set, otherwise the primary URI.
+
+        :returns: Description string, or first URI, or the literal ``(unknown)``
+            if the repo has no URIs.
+        :rtype: str
+        """
         if self.description:
             return self.description
         return self.uris[0] if self.uris else "(unknown)"
