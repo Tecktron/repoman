@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 
 import gi
@@ -9,7 +10,7 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, GLib, Gtk
 
 from ...checker import Checker, get_network_error, reset_network_state
-from ...models import AvailabilityStatus, Repository, WizardState
+from ...models import AVAILABILITY_ICONS, AvailabilityStatus, Repository, WizardState
 from .base_page import RepomanWizardPage
 
 
@@ -70,10 +71,15 @@ class CheckAvailabilityPage(RepomanWizardPage):
 
     def _run_checks(self) -> None:
         """Background thread only. Never touch GTK widgets here."""
-        for repo in self._state.selected:
+
+        def _check_one(repo: Repository) -> None:
             status = self._checker.check(repo, self._state.target_codename)
             repo.availability = status
             GLib.idle_add(self._update_row, repo, status)
+
+        max_workers = max(1, min(len(self._state.selected), 8))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            pool.map(_check_one, self._state.selected)
 
     def _update_row(self, repo: Repository, status: AvailabilityStatus) -> bool:
         """GTK main thread — called via idle_add. Must return GLib.SOURCE_REMOVE."""
@@ -81,11 +87,7 @@ class CheckAvailabilityPage(RepomanWizardPage):
         if row is None:
             return GLib.SOURCE_REMOVE
         row.remove(spinner)
-        icon_name, css = {
-            AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
-            AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
-            AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
-        }.get(status, ("dialog-question-symbolic", ""))
+        icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
             icon.add_css_class(css)

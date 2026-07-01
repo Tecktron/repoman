@@ -8,7 +8,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, GObject, Gtk
 
-from ..models import AvailabilityStatus, Repository
+from ..models import AVAILABILITY_ICONS, AvailabilityStatus, Repository
 
 
 class RepoRow(Adw.ActionRow):
@@ -105,11 +105,7 @@ def _make_badge(status: AvailabilityStatus) -> Gtk.Widget | None:
         return None
     if status == AvailabilityStatus.CHECKING:
         return Gtk.Spinner(spinning=True)
-    icon_name, css = {
-        AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
-        AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
-        AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
-    }.get(status, ("dialog-question-symbolic", ""))
+    icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
     icon = Gtk.Image.new_from_icon_name(icon_name)
     if css:
         icon.add_css_class(css)

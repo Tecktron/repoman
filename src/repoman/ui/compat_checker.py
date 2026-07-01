@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 
 import gi
@@ -8,7 +9,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, GLib, Gtk
 
-from ..models import AvailabilityStatus, Repository
+from ..models import AVAILABILITY_ICONS, AvailabilityStatus, Repository
 from ..upgrade_info import (
     get_all_known_codenames,
     get_current_codename_and_display,
@@ -119,10 +120,20 @@ class CompatCheckerWindow(Gtk.Window):
 
         # Results stack
         self._results_stack = Gtk.Stack()
-        placeholder = Adw.StatusPage(
-            icon_name="dialog-question-symbolic",
-            title="Select a target release and click Check",
+        placeholder = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8,
+            valign=Gtk.Align.CENTER,
+            vexpand=True,
+            margin_top=24,
+            margin_bottom=24,
         )
+        placeholder_icon = Gtk.Image.new_from_icon_name("software-boutique")
+        placeholder_icon.set_pixel_size(64)
+        placeholder_icon.add_css_class("dim-label")
+        placeholder.append(placeholder_icon)
+        placeholder_label = Gtk.Label(label="Select a target release and click Check")
+        placeholder.append(placeholder_label)
         self._results_stack.add_named(placeholder, "placeholder")
         self._results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self._results_stack.add_named(self._results_box, "results")
@@ -234,7 +245,7 @@ class CompatCheckerWindow(Gtk.Window):
             )
             for repo in self._agnostic_repos:
                 row = self._make_repo_row(repo)
-                row.add_suffix(Gtk.Image.new_from_icon_name("emblem-synchronizing-symbolic"))
+                row.add_suffix(Gtk.Image.new_from_icon_name(AVAILABILITY_ICONS[AvailabilityStatus.SUITE_AGNOSTIC][0]))
                 agnostic_group.add(row)
             self._results_box.append(agnostic_group)
 
@@ -260,7 +271,7 @@ class CompatCheckerWindow(Gtk.Window):
         threading.Thread(target=self._run_checks, args=(target_codename,), daemon=True).start()
 
     def _run_checks(self, target_codename: str) -> None:
-        for repo in self._ppa_repos:
+        def _check_one(repo: Repository) -> None:
             if not repo.ppa_owner or not repo.ppa_name:
                 GLib.idle_add(
                     self._on_row_checked,
@@ -269,7 +280,7 @@ class CompatCheckerWindow(Gtk.Window):
                     "Could not parse PPA from URI",
                     None,
                 )
-                continue
+                return
             suites, error = get_ppa_suites(repo.ppa_owner, repo.ppa_name)
             if suites is None:
                 status = AvailabilityStatus.UNKNOWN
@@ -278,6 +289,10 @@ class CompatCheckerWindow(Gtk.Window):
             else:
                 status = AvailabilityStatus.UNAVAILABLE
             GLib.idle_add(self._on_row_checked, repo, status, error, suites)
+
+        max_workers = max(1, min(len(self._ppa_repos), 8))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            pool.map(_check_one, self._ppa_repos)
 
     def _on_row_checked(
         self,
@@ -309,10 +324,7 @@ class CompatCheckerWindow(Gtk.Window):
         suites: frozenset[str] | None,
     ) -> Gtk.MenuButton:
         """Clickable status icon that opens a detail popover."""
-        icon_name, css = {
-            AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
-            AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
-        }.get(status, ("dialog-question-symbolic", ""))
+        icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
 
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
