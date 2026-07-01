@@ -39,12 +39,15 @@ def save_config(repos: list[Repository]) -> str:
 
 
 def load_config(path: Path) -> list[dict]:
-    """Parse a .repoman JSON file.
+    """Parse a .repoman JSON file and return the list of repo entries.
 
-    Raises:
-        json.JSONDecodeError: file is not valid JSON
-        ValueError: version field is missing or unsupported
-        KeyError: required top-level key missing
+    :param path: Path to the .repoman file to read.
+    :type path: Path
+    :returns: List of raw repo dicts from the ``repos`` key.
+    :rtype: list[dict]
+    :raises json.JSONDecodeError: File is not valid JSON.
+    :raises ValueError: ``version`` field is missing or not ``1``.
+    :raises KeyError: Required top-level key is absent.
     """
     data = json.loads(path.read_text(encoding="utf-8"))
     if data.get("version") != 1:
@@ -58,9 +61,14 @@ def match_repos(
 ) -> tuple[list[tuple[dict, Repository]], list[dict]]:
     """Match saved config entries to live repos by primary URI.
 
-    Returns:
-        matched — [(saved_entry, live_repo), ...] for repos found on the system
-        missing — saved entries whose URI was not found on the system
+    :param saved: List of raw repo dicts from a loaded .repoman file.
+    :type saved: list[dict]
+    :param live: Currently loaded repositories from the system.
+    :type live: list[Repository]
+    :returns: A 2-tuple of ``(matched, missing)``, where ``matched`` is a list
+        of ``(saved_entry, live_repo)`` pairs for repos found on the system,
+        and ``missing`` is a list of saved entries whose URI was not found.
+    :rtype: tuple[list[tuple[dict, Repository]], list[dict]]
     """
     live_by_uri = {r.uris[0]: r for r in live if r.uris}
     matched: list[tuple[dict, Repository]] = []
