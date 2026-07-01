@@ -51,7 +51,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install doc tools
-        run: pip install sphinx furo mkdocs-material
+        run: pip install sphinx sphinx-conestack-theme mkdocs-material
       - name: Build Sphinx (warnings as errors)
         run: PYTHONPATH=src sphinx-build -W sphinx sphinx/_build/html
       - name: Build MkDocs (strict mode)

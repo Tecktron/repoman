@@ -18,7 +18,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install doc tools
-        run: pip install sphinx furo mkdocs-material ghp-import
+        run: pip install sphinx sphinx-conestack-theme mkdocs-material ghp-import
 
       - name: Build Sphinx API docs
         run: PYTHONPATH=src sphinx-build sphinx sphinx/_build/html

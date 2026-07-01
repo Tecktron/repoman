@@ -1,0 +1,407 @@
+/* repoman Sphinx docs — movie-poster palette over conestack dark
+   Conestack is Bootstrap 5.3-based. Dark mode is toggled by
+   data-bs-theme="dark" on <html>. We force it via a template override
+   and also override the key Bootstrap CSS variables unconditionally
+   on :root so the page is dark even before JS fires.
+
+   Palette:
+     bg        #0a0d0a   panel bg   #11140f   raised bg  #181c16
+     text      #c9bea0   dim text   #756b52   border     #232a1f
+     green     #39ff14   green hi   #74ff57   green dim  #1fa007
+     red       #ff2d4a   purple     #b388ff
+     code bg   #14180f   code text  #d9cfa9
+*/
+
+/* ── Bootstrap variable overrides ────────────────────────────
+   Set on :root (not [data-bs-theme=dark]) so they apply
+   immediately on first paint, before JS sets the attribute.  */
+
+:root {
+    color-scheme: dark;
+
+    /* Body */
+    --bs-body-bg:            #0a0d0a;
+    --bs-body-bg-rgb:        10, 13, 10;
+    --bs-body-color:         #c9bea0;
+    --bs-body-color-rgb:     201, 190, 160;
+
+    /* Emphasis / secondary text */
+    --bs-emphasis-color:     #c9bea0;
+    --bs-emphasis-color-rgb: 201, 190, 160;
+    --bs-secondary-color:    #756b52;
+    --bs-secondary-bg:       #11140f;
+    --bs-tertiary-bg:        #181c16;
+
+    /* Border */
+    --bs-border-color:       #232a1f;
+    --bs-border-color-translucent: rgba(35, 42, 31, 0.8);
+
+    /* Semantic colour remaps — conestack uses these for API blocks */
+    --bs-blue:               #39ff14;   /* sig-name, sig-prename → green  */
+    --bs-red:                #ff2d4a;   /* .property keyword labels → red  */
+    --bs-gray-600:           #9e9073;   /* sig-param → muted cream         */
+    --bs-gray-400:           #4a4535;
+    --bs-gray-200:           #232a1f;
+    --bs-gray-900:           #0a0d0a;
+
+    /* Link colours */
+    --bs-link-color:         #39ff14;
+    --bs-link-color-rgb:     57, 255, 20;
+    --bs-link-hover-color:   #74ff57;
+    --bs-link-hover-color-rgb: 116, 255, 87;
+
+    /* Header variables */
+    --cs-bg-color:           #0a0d0a;
+    --cs-color:              #c9bea0;
+
+    /* Layout */
+    --layout-width:          1200px;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+#header {
+    background: #0a0d0a;
+    border-bottom: 1px solid #232a1f;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+#logo,
+#logo:hover,
+#logo:visited,
+#logo:active {
+    color: #39ff14;
+    font-weight: 700;
+}
+
+#logo > span {
+    color: #39ff14;
+}
+
+/* External links (GitHub icon etc.) in header */
+#cs-ext-links .nav-link {
+    color: #c9bea0;
+}
+
+#cs-ext-links .nav-link:hover {
+    color: #39ff14;
+}
+
+/* Hide the light/dark toggle — we're dark only */
+#colortoggler-wrapper {
+    display: none !important;
+}
+
+/* Search box in header */
+#header .form-control {
+    background-color: #181c16;
+    color: #c9bea0;
+    border-color: #232a1f;
+}
+
+#header .form-control:focus {
+    border-color: #39ff14;
+    box-shadow: 0 0 0 0.2rem rgba(57, 255, 20, 0.2);
+}
+
+/* ── Page body ───────────────────────────────────────────── */
+
+body {
+    background-color: #0a0d0a;
+    color: #c9bea0;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+
+#cs-sidebar {
+    background-color: #0a0d0a;
+    border-right: 1px solid #232a1f;
+}
+
+.cs-nav-toc a,
+.cs-nav-toc a:visited,
+.cs-nav-toc a:active,
+.cs-nav-toc a:hover {
+    color: #9e9073;
+    text-decoration: none;
+}
+
+.cs-nav-toc li.toctree-l1 > a {
+    color: #c9bea0;
+    font-weight: 600;
+}
+
+/* Active / current page */
+.cs-nav-toc li.toctree-l1.current > a,
+.cs-nav-toc li.toctree-l1.current > a::before,
+.cs-nav-toc li.toctree-l2 a.active {
+    color: #39ff14;
+}
+
+.cs-nav-toc li.toctree-l1 > a.current::before,
+.cs-nav-toc li.toctree-l1 > a.expanded::before {
+    color: #39ff14;
+}
+
+/* ── Main content ────────────────────────────────────────── */
+
+.cs-content {
+    color: #c9bea0;
+}
+
+.cs-content p {
+    line-height: 1.65;
+}
+
+/* Headings */
+.cs-content h1,
+.cs-content h2,
+.cs-content h3,
+.cs-content h4,
+.cs-content h5,
+.cs-content h6 {
+    color: #ff2d4a;
+    font-weight: 700;
+}
+
+.cs-content h1 {
+    border-bottom: 1px solid #232a1f;
+    padding-bottom: 0.3em;
+}
+
+/* Heading anchor links */
+.cs-content .headerlink {
+    color: #39ff14 !important;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.cs-content h1:hover .headerlink,
+.cs-content h2:hover .headerlink,
+.cs-content h3:hover .headerlink,
+.cs-content h4:hover .headerlink {
+    opacity: 1;
+}
+
+/* Body links */
+.cs-content a,
+.cs-content a:visited {
+    color: #39ff14;
+    text-decoration: none;
+}
+
+.cs-content a:hover {
+    color: #74ff57;
+    text-decoration: none;
+}
+
+/* ── Code and preformatted ───────────────────────────────── */
+
+.cs-content pre,
+.cs-content .literal-block {
+    background-color: #14180f !important;
+    border: 1px solid #232a1f;
+    border-radius: 4px;
+    color: #d9cfa9;
+}
+
+.cs-content code {
+    background-color: #14180f;
+    color: #d9cfa9;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.88em;
+}
+
+.cs-content .highlight pre {
+    background-color: #14180f;
+    border: none;
+    padding: 0.75rem 1rem;
+}
+
+.cs-content .highlight {
+    background-color: #14180f;
+    border-radius: 4px;
+    border: 1px solid #232a1f;
+}
+
+/* ── autodoc API blocks ──────────────────────────────────── */
+
+/* Function/class name in signatures (conestack uses .sig-name with --bs-blue) */
+.cs-content .sig-name {
+    color: #39ff14 !important;
+    font-weight: 700;
+}
+
+/* Module prefix (repoman.checker.Checker) */
+.cs-content .sig-prename {
+    color: #756b52 !important;
+    font-weight: 400;
+}
+
+/* Parameters */
+.cs-content .sig-param {
+    color: #c9bea0 !important;
+}
+
+/* Type annotations in sig-param */
+.cs-content .sig-param .n,
+.cs-content .sig-param .p,
+.cs-content em.property {
+    color: #b388ff;
+}
+
+/* property keyword (class, function, method) */
+.cs-content dl.class > dt .property,
+.cs-content dl.function > dt .property,
+.cs-content dl.method > dt .property,
+.cs-content dl.exception > dt .property,
+.cs-content dl.enum-class > dt .property {
+    color: #ff2d4a !important;
+}
+
+/* Signature block: dt gets a green left accent */
+.cs-content dl.py > dt,
+.cs-content dl.class > dt,
+.cs-content dl.function > dt,
+.cs-content dl.method > dt,
+.cs-content dl.attribute > dt,
+.cs-content dl.data > dt {
+    background-color: #181c16;
+    border-left: 3px solid #39ff14;
+    border-radius: 0 4px 4px 0;
+    padding: 0.35em 0.75em;
+    margin-bottom: 0.4em;
+    color: #c9bea0;
+}
+
+.cs-content dl.py > dd,
+.cs-content dl.class > dd,
+.cs-content dl.function > dd,
+.cs-content dl.method > dd {
+    margin-left: 1.5rem;
+    color: #c9bea0;
+}
+
+/* Field list labels: Parameters / Returns / Raises */
+.cs-content dl.field-list > dt {
+    background: none;
+    border: none;
+    color: #ff2d4a;
+    font-weight: 700;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0;
+}
+
+.cs-content dl.field-list > dd {
+    margin-left: 1rem;
+    color: #c9bea0;
+}
+
+/* ── Right-side local TOC ────────────────────────────────── */
+
+.cs-local-toc nav a {
+    color: #756b52;
+}
+
+.cs-local-toc nav a:hover {
+    color: #39ff14;
+}
+
+/* ── Tables ──────────────────────────────────────────────── */
+
+.cs-content table.docutils {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.cs-content table.docutils td,
+.cs-content table.docutils th {
+    border: 1px solid #232a1f;
+    padding: 0.4em 0.7em;
+    color: #c9bea0;
+}
+
+.cs-content table.docutils th {
+    background-color: #181c16;
+    color: #ff2d4a;
+    font-weight: 600;
+}
+
+.cs-content table.docutils tr:nth-child(even) td {
+    background-color: #11140f;
+}
+
+/* ── Admonitions ─────────────────────────────────────────── */
+
+.cs-content .admonition {
+    background-color: #181c16;
+    border-left: 3px solid #b388ff;
+    border-radius: 0 4px 4px 0;
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
+}
+
+.cs-content .admonition .admonition-title {
+    color: #b388ff;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8em;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+}
+
+.cs-content .warning {
+    border-left-color: #ff2d4a;
+    background-color: rgba(255, 45, 74, 0.06);
+}
+
+.cs-content .warning .admonition-title {
+    color: #ff2d4a;
+}
+
+.cs-content .note {
+    border-left-color: #39ff14;
+    background-color: rgba(57, 255, 20, 0.04);
+}
+
+.cs-content .note .admonition-title {
+    color: #39ff14;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+
+footer {
+    color: #756b52;
+    border-top: 1px solid #232a1f;
+    background-color: #0a0d0a;
+}
+
+footer a {
+    color: #39ff14;
+}
+
+/* ── Misc ────────────────────────────────────────────────── */
+
+hr {
+    border-color: #232a1f;
+}
+
+/* [source] / viewcode links */
+.cs-content a.viewcode-link,
+.cs-content a.reference.internal.viewcode-back {
+    color: #756b52;
+    font-size: 0.8em;
+}
+
+.cs-content a.viewcode-link:hover {
+    color: #39ff14;
+}
+
+/* Selection */
+::selection {
+    background-color: rgba(57, 255, 20, 0.2);
+    color: #c9bea0;
+}

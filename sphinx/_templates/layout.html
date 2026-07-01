@@ -1,0 +1,13 @@
+{#- Extend conestack's layout, injecting dark-mode lock before its JS fires. #}
+{%- extends "!layout.html" %}
+
+{%- block extrahead %}
+<script>
+(function () {
+  /* Set dark mode before Bootstrap CSS is applied — prevents flash of light. */
+  document.documentElement.setAttribute('data-bs-theme', 'dark');
+  localStorage.setItem('sphinx-conestack-theme-color-theme', 'dark');
+})();
+</script>
+{{ super() }}
+{%- endblock %}

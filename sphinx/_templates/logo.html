@@ -1,0 +1,11 @@
+{#- Override conestack's logo.html to use pathto() for correct relative paths
+    on nested pages (api/*.html), and to default logo_title to the project name. #}
+{%- if theme_logo_url %}
+  <a id="logo" class="navbar-brand p-0 me-2" href="https://tecktron.github.io/repoman/">
+    <img src="{{ pathto('_static/' + theme_logo_url, 1) }}"
+         alt="{{ theme_logo_title or project }}"
+         width="{{ theme_logo_width }}"
+         height="{{ theme_logo_height }}" />
+    <span>{{ theme_logo_title or project }}</span>
+  </a>
+{%- endif %}

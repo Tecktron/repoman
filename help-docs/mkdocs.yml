@@ -46,7 +46,7 @@ nav:
   - Reference:
     - Configuration: reference/config.md
   - Changelog: changelog.md
-  - Developer API Reference: https://tecktron.github.io/repoman/developers/
+  - Developer API Reference: developers/index.md
 
 plugins:
   - search
