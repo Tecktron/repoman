@@ -36,6 +36,9 @@ autodoc_mock_imports = [
     "gi.repository.Pango",
     "Xlib",
     "Xlib.display",
+    "debian",
+    "debian.deb822",
+    "requests",
 ]
 
 intersphinx_mapping = {
