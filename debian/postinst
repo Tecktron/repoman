@@ -7,6 +7,9 @@ case "$1" in
         glib-compile-schemas /usr/share/glib-2.0/schemas/ || true
         gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
         systemctl reload polkit 2>/dev/null || true
+        if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+            su "$SUDO_USER" -c "DISPLAY=${DISPLAY:-:0} repoman" 2>/dev/null &
+        fi
         ;;
 esac
 

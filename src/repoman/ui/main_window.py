@@ -964,7 +964,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         win.present()
 
     def _open_help(self) -> None:
-        Gtk.show_uri(self, "https://github.com/Tecktron/repoman", 0)
+        Gtk.show_uri(self, "https://tecktron.github.io/repoman/getting-started/", 0)
 
     def _show_about(self) -> None:
         win = Gtk.Window(

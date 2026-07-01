@@ -415,8 +415,6 @@ Repos on the system but absent from the file are left untouched.
 - **Wizard dry-run test**: the full wizard flow (banner → select → check →
   confirm → polkit write → reload) hasn't been exercised end-to-end with test
   `.sources` files. See `test-plan.md` for the full test procedure.
-- **Icon**: no app icon SVG yet (`io.github.Tecktron.repoman`).
-- **Packaging**: `debian/` skeleton exists; `.deb` has not been built or tested.
 - **Distribution**: PPA at `ppa:tecktron-studios/repoman` not yet created.
 
 ---
@@ -424,8 +422,9 @@ Repos on the system but absent from the file are left untouched.
 ## Build / packaging
 
 Runtime deps (system packages, not pip): `python3-gi`, `gir1.2-gtk-4.0`,
-`gir1.2-adw-1` (≥1.5), `python3-apt`, `python3-debian`, `python3-launchpadlib`,
-`python3-requests`, `policykit-1`.
+`gir1.2-adw-1` (≥1.5), `gir1.2-packagekitglib-1.0`, `python3-debian`,
+`python3-launchpadlib`, `python3-requests`, `python3-xlib`, `policykit-1`,
+`lsb-release`.
 
 polkit policy must be installed to `/usr/share/polkit-1/actions/` and polkit
 restarted (`systemctl restart polkit`) before the wizard's Apply step works.
@@ -433,4 +432,10 @@ The helper must be executable: `chmod +x polkit-helper`.
 
 `debian/` contains control, rules (dh + pybuild), install, postinst
 (compiles GSettings schemas, updates icon cache, sets helper +x), changelog.
-Build: `dpkg-buildpackage -us -uc`. Install: `dpkg -i repoman_*.deb`.
+
+Build deps (beyond what `debhelper-compat` pulls in): `dh-python`,
+`pybuild-plugin-pyproject`, `python3-all`, `python3-setuptools`.
+Install with `sudo apt install debhelper dh-python pybuild-plugin-pyproject python3-all python3-setuptools` before building.
+
+Build: `dpkg-buildpackage -us -uc` (run from the repo root; output lands in `../`).
+Install: `sudo dpkg -i ../repoman_*.deb`.

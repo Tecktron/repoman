@@ -25,10 +25,10 @@ sudo apt update && sudo apt install repoman
 
 ## Via .deb package
 
-!!! warning "Not yet available"
-    Signed `.deb` packages will be attached to each [GitHub release](https://github.com/Tecktron/repoman/releases).
+!!! warning "Not yet published"
+    Signed `.deb` packages will be attached to each [GitHub release](https://github.com/Tecktron/repoman/releases) once the first release is tagged.
 
-Once available, download the `.deb` and install it:
+Download the `.deb` from the releases page and install it:
 
 ```bash
 sudo dpkg -i repoman_*.deb
