@@ -104,5 +104,5 @@ repoman catches both — and it doesn't stop there. Between upgrades it's a full
 ## System requirements
 
 - **Ubuntu 24.04 LTS or later** — Xubuntu, Kubuntu, Ubuntu GNOME, and any other official flavor
-- GTK4 and libadwaita 1.4 — included with Ubuntu 24.04, no extra packages needed
+- GTK4 and libadwaita 1.5 — included with Ubuntu 24.04, no extra packages needed
 - No additional runtime dependencies beyond what Ubuntu ships

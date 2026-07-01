@@ -130,7 +130,7 @@ python3 -m repoman.main
 
 ```bash
 # Install build tools once
-sudo apt install debhelper dh-python python3-all python3-setuptools
+sudo apt install debhelper dh-python pybuild-plugin-pyproject python3-all python3-setuptools
 
 cd /path/to/repoman
 dpkg-buildpackage -us -uc

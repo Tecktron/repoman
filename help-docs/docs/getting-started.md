@@ -36,7 +36,7 @@ Each repository row in the sidebar shows a small icon on the right:
 |------|---------|
 | ✓ (green) | Available for the target release |
 | ⚠ (orange) | Not yet available for the target release |
-| ⟳ (grey) | Suite-agnostic — `stable`, `main`, etc. — no codename check needed |
+| 🔒 (grey) | Suite-agnostic — `stable`, `main`, etc. — no codename check needed |
 | ? (dimmed) | Not yet checked |
 
 The `?` icon is the default before any availability check runs. The wizard runs checks on Step 2; the compat checker runs them independently.

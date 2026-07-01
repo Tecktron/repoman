@@ -28,8 +28,9 @@
 
   <launchable type="desktop-id">io.github.Tecktron.repoman.desktop</launchable>
 
-  <url type="homepage">https://github.com/Tecktron/repoman</url>
+  <url type="homepage">https://tecktron.github.io/repoman/</url>
   <url type="bugtracker">https://github.com/Tecktron/repoman/issues</url>
+  <url type="vcs-browser">https://github.com/Tecktron/repoman</url>
 
   <provides>
     <binary>repoman</binary>

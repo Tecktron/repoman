@@ -34,7 +34,7 @@ Results:
 |------|--------|---------|
 | ✓ | Available | Packages exist for this release |
 | ⚠ | Unavailable | No packages found for this release — will be skipped |
-| ⟳ | Suite-agnostic | Fixed suite name, no codename check needed |
+| 🔒 | Suite-agnostic | Fixed suite name, no codename check needed |
 
 Hover over any icon to see a tooltip with the full status description.
 

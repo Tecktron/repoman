@@ -91,12 +91,22 @@ EOF
 
 ## Phase 3 — Launch the app
 
+**Option A — from source (development):**
+
 ```bash
 cd /home/craig/Projects/repoman
 pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
 DISPLAY=:0 \
 python3 -m repoman.main > /tmp/repoman.log 2>&1 &
+```
+
+**Option B — from .deb (installed package):**
+
+```bash
+dpkg-buildpackage -us -uc
+sudo dpkg -i ../repoman_*.deb
+# App auto-launches on install; or run: repoman
 ```
 
 > Real repos will be visible alongside the test repos — focus on the
@@ -128,7 +138,7 @@ Click **Review** on the banner, or **Tools → Run Upgrade Assistant**.
 - Group header has a **"Deselect all"** button (all are ticked, so label reads "Deselect all")
 - Status icons on the test repos (no network checks run yet on this page):
   - Docker CE → dimmed **?** (UNKNOWN — stale codename, not yet checked)
-  - VS Code → **⟳** sync icon (SUITE_AGNOSTIC — detected at parse time)
+  - VS Code → **🔒** lock icon (SUITE_AGNOSTIC — detected at parse time)
   - Fake → dimmed **?** (UNKNOWN)
 - "Check availability" button is active
 
@@ -144,7 +154,7 @@ Click **Review** on the banner, or **Tools → Run Upgrade Assistant**.
 - All rows start with spinning indicators
 - Results after checks complete (for the test repos):
   - Docker CE → green **✓** (AVAILABLE)
-  - VS Code → **⟳** sync icon (SUITE_AGNOSTIC — no network call needed)
+  - VS Code → **🔒** lock icon (SUITE_AGNOSTIC — no network call needed)
   - Fake → orange **⚠** (UNAVAILABLE — may take a few seconds to time out)
 - Hover over each icon → tooltip shows the status description
 - Once all resolve, "Next" button becomes active
@@ -247,7 +257,7 @@ Select a target release and click **Check compatibility**.
 
 **Expected:**
 - PPA repos show spinners then resolve to status icons
-- Suite-agnostic repos show sync icon immediately (no network call)
+- Suite-agnostic repos show lock icon immediately (no network call)
 - Non-PPA repos show ? icon with "Manual check recommended"
 - Clicking a status icon opens a detail popover:
   - AVAILABLE: "Repo is ready for {target}"
@@ -519,7 +529,7 @@ pkill -f "python3 -m repoman.main"
 - [ ] All repos appear in Step 1 with correct pre-ticked state
 - [ ] Step 1: "Deselect all" / "Select all" button works correctly
 - [ ] Step 1: UNKNOWN repos show dimmed ? icon (no spinner — checks haven't run)
-- [ ] Step 1: SUITE_AGNOSTIC repos show sync icon
+- [ ] Step 1: SUITE_AGNOSTIC repos show lock icon
 - [ ] Step 1: unticking all makes "Check availability" insensitive
 - [ ] Step 2: all rows start as spinners, resolve to correct icons
 - [ ] Step 2: hovering an icon shows the correct tooltip
