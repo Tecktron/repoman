@@ -5,11 +5,17 @@ on:
     types: [published]
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build and deploy
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install doc tools
-        run: pip install sphinx sphinx-conestack-theme mkdocs-material ghp-import
+        run: pip install sphinx sphinx-conestack-theme mkdocs-material
 
       - name: Build Sphinx API docs
         run: PYTHONPATH=src sphinx-build sphinx sphinx/_build/html
@@ -31,5 +37,19 @@ jobs:
       - name: Merge Sphinx output into MkDocs site
         run: cp -r sphinx/_build/html help-docs/site/developers
 
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: help-docs/site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
-        run: ghp-import -n -p -f help-docs/site
+        id: deployment
+        uses: actions/deploy-pages@v4
