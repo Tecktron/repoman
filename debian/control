@@ -1,7 +1,7 @@
 Source: repoman
 Section: admin
 Priority: optional
-Maintainer: Tecktron Studios <craig@craigiscool.com>
+Maintainer: Tecktron Studios <software@tecktron.net>
 Build-Depends: debhelper-compat (= 13),
                dh-python,
                python3-all,
