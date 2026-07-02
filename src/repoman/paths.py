@@ -23,6 +23,7 @@ LSB_RELEASE = _find("lsb_release")
 # Optional companion tools — None if not installed on this system
 UPDATE_MANAGER = shutil.which("update-manager")
 SOFTWARE_PROPERTIES = shutil.which("software-properties-gtk")
+GDEBI = shutil.which("gdebi-gtk")
 
 POLKIT_HELPER = "/usr/lib/repoman/polkit-helper"
 

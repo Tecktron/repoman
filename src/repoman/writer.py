@@ -23,6 +23,8 @@ def repo_to_deb822(repo: Repository) -> str:
     stanza["URIs"] = " ".join(repo.uris)
     stanza["Suites"] = " ".join(repo.suites)
     stanza["Components"] = " ".join(repo.components)
+    if repo.architectures:
+        stanza["Architectures"] = " ".join(repo.architectures)
     stanza["Enabled"] = "yes" if repo.enabled else "no"
     if repo.signed_by:
         stanza["Signed-By"] = repo.signed_by

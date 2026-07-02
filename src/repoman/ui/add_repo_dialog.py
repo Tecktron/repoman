@@ -24,6 +24,7 @@ from ..source_parse import (
     uri_to_key_filename as _uri_to_key_filename,
     uri_to_source_filename as _uri_to_source_filename,
 )
+from ..utils import get_current_codename
 from ..writer import repo_to_deb822
 from .position import center_on_parent
 
@@ -45,9 +46,10 @@ def _unique_source_path(name: str) -> Path:
 
 class AddRepoDialog(Gtk.Window):
     """
-    Two-tab dialog for adding a new APT repository.
+    Three-tab dialog for adding a new APT repository.
 
-    Tab 1 (Auto): paste a deb one-liner or DEB822 block + optional GPG key URL.
+    Tab 0 (PPA): enter a Launchpad PPA address (ppa:owner/name).
+    Tab 1 (URL): paste a deb one-liner or DEB822 block + optional GPG key URL.
     Tab 2 (Manual): fill individual fields.
 
     Emits "repo-added" with the new Repository object on success.
@@ -74,20 +76,17 @@ class AddRepoDialog(Gtk.Window):
     # ------------------------------------------------------------------
 
     def _build_ui(self) -> None:
-        outer = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=0,
-        )
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         self._notebook = Gtk.Notebook()
         self._notebook.set_margin_top(12)
         self._notebook.set_margin_bottom(0)
         self._notebook.set_margin_start(12)
         self._notebook.set_margin_end(12)
-        self._notebook.connect("switch-page", self._on_tab_switched)
+        # switch-page connected after _add_btn exists — signal fires on first append_page()
 
-        # Tab 1 — Auto
-        auto_box = Gtk.Box(
+        # Tab 0 — PPA
+        ppa_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,
             margin_top=12,
@@ -95,18 +94,45 @@ class AddRepoDialog(Gtk.Window):
             margin_start=6,
             margin_end=6,
         )
-        auto_box.append(
+        ppa_box.append(
+            Gtk.Label(
+                label="Enter a Launchpad PPA address. The signing key is fetched and installed automatically.",
+                xalign=0,
+                wrap=True,
+            )
+        )
+        ppa_group = Adw.PreferencesGroup()
+        self._ppa_row = Adw.EntryRow(title="PPA address  (ppa:owner/name)")
+        self._ppa_row.connect("changed", self._on_ppa_changed)
+        ppa_group.add(self._ppa_row)
+        ppa_box.append(ppa_group)
+        self._ppa_error_lbl = Gtk.Label(xalign=0, wrap=True, max_width_chars=55)
+        self._ppa_error_lbl.add_css_class("warning")
+        self._ppa_error_lbl.set_visible(False)
+        ppa_box.append(self._ppa_error_lbl)
+        self._notebook.append_page(ppa_box, Gtk.Label(label="PPA"))
+
+        # Tab 1 — URL
+        url_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=6,
+            margin_end=6,
+        )
+        url_box.append(
             Gtk.Label(
                 label="Paste a sources line (deb …) or a full DEB822 block:",
                 xalign=0,
             )
         )
-        auto_scroll = Gtk.ScrolledWindow(
+        url_scroll = Gtk.ScrolledWindow(
             hscrollbar_policy=Gtk.PolicyType.NEVER,
             vscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
             height_request=130,
         )
-        auto_scroll.add_css_class("card")
+        url_scroll.add_css_class("card")
         self._auto_text = Gtk.TextView(
             monospace=True,
             wrap_mode=Gtk.WrapMode.WORD_CHAR,
@@ -115,21 +141,19 @@ class AddRepoDialog(Gtk.Window):
             margin_start=6,
             margin_end=6,
         )
-        auto_scroll.set_child(self._auto_text)
-        auto_box.append(auto_scroll)
-
-        auto_key_group = Adw.PreferencesGroup()
+        url_scroll.set_child(self._auto_text)
+        url_box.append(url_scroll)
+        url_key_group = Adw.PreferencesGroup()
         self._auto_key_row = Adw.EntryRow(title="GPG key URL (optional)")
         self._auto_key_row.set_input_purpose(Gtk.InputPurpose.URL)
-        auto_key_group.add(self._auto_key_row)
-        auto_box.append(auto_key_group)
-
+        url_key_group.add(self._auto_key_row)
+        url_box.append(url_key_group)
         self._auto_error_lbl = Gtk.Label(xalign=0, wrap=True, max_width_chars=55)
         self._auto_error_lbl.add_css_class("warning")
         self._auto_error_lbl.set_visible(False)
-        auto_box.append(self._auto_error_lbl)
-
-        self._notebook.append_page(auto_box, Gtk.Label(label="Auto"))
+        url_box.append(self._auto_error_lbl)
+        self._notebook.append_page(url_box, Gtk.Label(label="URL"))
+        self._auto_text.get_buffer().connect("changed", self._on_auto_changed)
 
         # Tab 2 — Manual
         manual_box = Gtk.Box(
@@ -145,44 +169,33 @@ class AddRepoDialog(Gtk.Window):
         self._uri_row.set_input_purpose(Gtk.InputPurpose.URL)
         self._uri_row.connect("changed", self._on_manual_changed)
         fields_group.add(self._uri_row)
-
         self._suite_row = Adw.EntryRow(title="Suite / Codename")
         fields_group.add(self._suite_row)
-
         self._components_row = Adw.EntryRow(title="Components")
         self._components_row.set_text("main")
         fields_group.add(self._components_row)
-
         self._desc_row = Adw.EntryRow(title="Name / Description (optional)")
         fields_group.add(self._desc_row)
-
         self._key_url_row = Adw.EntryRow(title="GPG key URL (optional)")
         self._key_url_row.set_input_purpose(Gtk.InputPurpose.URL)
         self._key_url_row.connect("changed", self._on_key_url_changed)
         fields_group.add(self._key_url_row)
-
         self._signed_by_row = Adw.EntryRow(title="Signing key path (auto-filled from key URL)")
         fields_group.add(self._signed_by_row)
-
         self._deb_src_row = Adw.SwitchRow(title="Also include source packages (deb-src)")
         fields_group.add(self._deb_src_row)
-
         self._enabled_row = Adw.SwitchRow(title="Enabled")
         self._enabled_row.set_active(True)
         fields_group.add(self._enabled_row)
-
         manual_box.append(fields_group)
-
         self._manual_error_lbl = Gtk.Label(xalign=0, wrap=True, max_width_chars=55)
         self._manual_error_lbl.add_css_class("warning")
         self._manual_error_lbl.set_visible(False)
         manual_box.append(self._manual_error_lbl)
-
         self._notebook.append_page(manual_box, Gtk.Label(label="Manual"))
 
         outer.append(self._notebook)
 
-        # Shared button row
         btn_box = Gtk.Box(
             spacing=6,
             halign=Gtk.Align.END,
@@ -203,6 +216,8 @@ class AddRepoDialog(Gtk.Window):
         outer.append(btn_box)
 
         self.set_child(outer)
+        self._notebook.connect("switch-page", self._on_tab_switched)
+        self._update_ppa_sensitivity()
 
     # ------------------------------------------------------------------
     # Sensitivity
@@ -210,16 +225,28 @@ class AddRepoDialog(Gtk.Window):
 
     def _on_tab_switched(self, _nb, _page, page_num: int) -> None:
         if page_num == 0:
-            # Auto tab: always allow trying (validation at submit)
-            self._add_btn.set_sensitive(True)
+            self._update_ppa_sensitivity()
+        elif page_num == 1:
+            self._on_auto_changed(self._auto_text.get_buffer())
         else:
             self._update_manual_sensitivity()
+
+    def _on_auto_changed(self, buf) -> None:
+        text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
+        if self._notebook.get_current_page() == 1:
+            self._add_btn.set_sensitive(bool(text))
 
     def _on_manual_changed(self, _row) -> None:
         self._update_manual_sensitivity()
 
     def _update_manual_sensitivity(self) -> None:
         self._add_btn.set_sensitive(bool(self._uri_row.get_text().strip()))
+
+    def _on_ppa_changed(self, _row) -> None:
+        self._update_ppa_sensitivity()
+
+    def _update_ppa_sensitivity(self) -> None:
+        self._add_btn.set_sensitive(bool(self._ppa_row.get_text().strip()))
 
     def _on_key_url_changed(self, _row) -> None:
         url = self._key_url_row.get_text().strip()
@@ -241,11 +268,14 @@ class AddRepoDialog(Gtk.Window):
         self._add_btn.set_label("Adding…")
         self._auto_error_lbl.set_visible(False)
         self._manual_error_lbl.set_visible(False)
+        self._ppa_error_lbl.set_visible(False)
         threading.Thread(target=self._do_add, daemon=True).start()
 
     def _do_add(self) -> None:
         page = self._notebook.get_current_page()
         if page == 0:
+            self._do_add_ppa()
+        elif page == 1:
             self._do_add_auto()
         else:
             self._do_add_manual()
@@ -255,6 +285,17 @@ class AddRepoDialog(Gtk.Window):
     def _do_add_auto(self) -> None:
         buf = self._auto_text.get_buffer()
         text = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
+
+        # Catch direct package download URLs early with a helpful message
+        if text.startswith(("http://", "https://")) and " " not in text:
+            if urlparse(text).path.lower().endswith((".deb", ".rpm", ".apk")):
+                GLib.idle_add(
+                    self._fail_auto,
+                    "This looks like a direct package download link, not a repository source."
+                    " Download the file and install it with your package manager instead.",
+                )
+                return
+
         fields = _parse_source_block(text)
         if not fields:
             GLib.idle_add(self._fail_auto, "Could not parse the pasted text. Please check the format.")
@@ -286,6 +327,30 @@ class AddRepoDialog(Gtk.Window):
         }
         key_url = self._key_url_row.get_text().strip()
         self._submit_fields(fields, key_url)
+
+    # --- PPA tab ---
+
+    def _do_add_ppa(self) -> None:
+        text = self._ppa_row.get_text().strip()
+        if text.startswith("ppa:"):
+            text = text[4:]
+        parts = text.split("/", 1)
+        if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
+            GLib.idle_add(self._fail_ppa, "Enter a PPA address in the format ppa:owner/name")
+            return
+        owner, name = parts[0].strip(), parts[1].strip()
+        codename = get_current_codename()
+        uri = f"https://ppa.launchpadcontent.net/{owner}/{name}/ubuntu"
+        fields = {
+            "types": ["deb"],
+            "uris": [uri],
+            "suites": [codename],
+            "components": ["main"],
+            "enabled": True,
+            "signed_by": None,
+            "description": f"PPA: {owner}/{name}",
+        }
+        self._submit_fields(fields, "")
 
     # --- Shared submission logic ---
 
@@ -348,14 +413,15 @@ class AddRepoDialog(Gtk.Window):
         if result.returncode == 0:
             GLib.idle_add(self._on_add_success, repo, key_error)
         else:
-            GLib.idle_add(
-                self._fail_auto if self._notebook.get_current_page() == 0 else self._fail_manual, result.stderr.strip()
-            )
+            page = self._notebook.get_current_page()
+            fail_fn = self._fail_ppa if page == 0 else (self._fail_auto if page == 1 else self._fail_manual)
+            GLib.idle_add(fail_fn, result.stderr.strip())
 
     def _on_add_success(self, repo: Repository, key_warning: str | None) -> bool:
         if key_warning:
             # Warn but still close — repo was added, just without the key
-            lbl = self._auto_error_lbl if self._notebook.get_current_page() == 0 else self._manual_error_lbl
+            page = self._notebook.get_current_page()
+            lbl = self._ppa_error_lbl if page == 0 else (self._auto_error_lbl if page == 1 else self._manual_error_lbl)
             lbl.set_label(f"Key fetch failed: {key_warning}. Repository added without signing.")
             lbl.set_visible(True)
             self._add_btn.set_sensitive(True)
@@ -375,6 +441,13 @@ class AddRepoDialog(Gtk.Window):
     def _fail_manual(self, message: str) -> bool:
         self._manual_error_lbl.set_label(message)
         self._manual_error_lbl.set_visible(True)
+        self._add_btn.set_sensitive(True)
+        self._add_btn.set_label("Add Repository")
+        return GLib.SOURCE_REMOVE
+
+    def _fail_ppa(self, message: str) -> bool:
+        self._ppa_error_lbl.set_label(message)
+        self._ppa_error_lbl.set_visible(True)
         self._add_btn.set_sensitive(True)
         self._add_btn.set_label("Add Repository")
         return GLib.SOURCE_REMOVE

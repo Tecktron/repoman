@@ -23,7 +23,7 @@ from .. import config_io
 from ..checker import get_network_error, reset_network_state
 from ..models import Repository
 from ..parser import Parser
-from ..paths import PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
+from ..paths import GDEBI, PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
 from ..utils import repos_needing_attention
 from ..writer import repo_to_deb822
 from .detail_pane import DetailPane
@@ -154,6 +154,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
         companion_section.append("Software & Updates", "win.launch-software-properties")
+        companion_section.append("Install a .deb package…", "win.launch-gdebi")
         tools.append_section(None, companion_section)
         model.append_submenu("Tools", tools)
 
@@ -220,6 +221,11 @@ class RepomanWindow(Gtk.ApplicationWindow):
         props_action.connect("activate", lambda _a, _p: self._launch(SOFTWARE_PROPERTIES))
         props_action.set_enabled(SOFTWARE_PROPERTIES is not None)
         self.add_action(props_action)
+
+        gdebi_action = Gio.SimpleAction.new("launch-gdebi", None)
+        gdebi_action.connect("activate", lambda _a, _p: self._launch(GDEBI))
+        gdebi_action.set_enabled(GDEBI is not None)
+        self.add_action(gdebi_action)
 
         # Repos menu actions
         refresh_action = Gio.SimpleAction.new("refresh-repos", None)

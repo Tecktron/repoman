@@ -12,7 +12,7 @@ Select a repository to see its fields in the detail pane:
 - **Suite** — the Ubuntu codename or fixed suite name (e.g. `noble`, `stable`).
 - **Components** — space-separated list (e.g. `main contrib non-free`).
 - **Enabled** — toggle to enable or disable without deleting the file.
-- **Signing key** — the path to the GPG keyring file used to verify packages from this repository.
+- **Signing key** — the GPG key used to verify packages: either a path to a keyring file or an inline PGP block embedded directly in the `.sources` file.
 
 The detail pane also has two utility buttons at the top right:
 
@@ -32,7 +32,11 @@ Click **Save** to write the changes. A polkit authentication dialog appears beca
 
 Open **Repos → Add Repository…**
 
-### Auto tab
+### PPA tab
+
+Enter a Launchpad PPA address in `ppa:owner/name` form (e.g. `ppa:libreoffice/ppa`). repoman fetches the signing key from Launchpad automatically — no separate key URL is needed. Click **Add Repository** to install the repository and key in one polkit prompt.
+
+### URL tab
 
 Paste a one-liner or a full DEB822 block directly from a project's installation instructions:
 
@@ -91,8 +95,12 @@ Every repository row in the detail pane has a **Signing key** section showing th
 | State | Display |
 |-------|---------|
 | No key configured | "No signing key configured" + **Add** button |
-| Key file exists | Filename + **Edit** button |
+| Key file path configured | Filename + **Edit** button |
+| Inline PGP key embedded | "Inline key" + **Edit** button |
 | Key path set but file missing | "Key file not found" (warning style) + **Add** button |
+
+!!! note "Inline PGP keys"
+    Repositories added by `apt-add-repository` or some PPAs embed the ASCII-armored key block directly inside the `.sources` file rather than referencing a separate keyring file. repoman displays these as "Inline key" and lets you view or replace the embedded key from the editor.
 
 ### Adding a key
 
@@ -104,7 +112,10 @@ Click **Add** to open the key editor. Three ways to provide a key:
 
 ### Editing a key
 
-Click **Edit** to open the key editor in edit mode. The **Key content** tab shows the current key in ASCII-armored format. The **Update** tab lets you replace the key from a file or URL without changing the path.
+Click **Edit** to open the key editor in edit mode.
+
+- **Key content tab** — shows the current key in ASCII-armored format. For inline keys, the full PGP block is shown. For file-based keys, the key is read from disk and displayed.
+- **Update tab** — replace the key from a file, URL, or (for inline keys) by pasting a new key block.
 
 <!-- screenshot: key-editor -->
 !!! example ""

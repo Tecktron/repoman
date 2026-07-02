@@ -29,6 +29,7 @@ def save_config(repos: list[Repository]) -> str:
                     "enabled": r.enabled,
                     "description": r.description,
                     "signed_by": r.signed_by,
+                    "architectures": r.architectures,
                     "source_file": str(r.source_file),
                 }
                 for r in repos
@@ -99,4 +100,5 @@ def entry_to_repository(entry: dict) -> Repository:
         enabled=entry.get("enabled", True),
         description=entry.get("description"),
         signed_by=entry.get("signed_by"),
+        architectures=entry.get("architectures") or [],
     )

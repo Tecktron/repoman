@@ -56,6 +56,7 @@ class Repository:
     enabled: bool
     description: str | None  # Description: field; None → show URI as fallback
     signed_by: str | None
+    architectures: list[str] = field(default_factory=list)  # Architectures: amd64 arm64 …
 
     # Derived — not stored in file
     is_ppa: bool = field(init=False)

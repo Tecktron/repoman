@@ -184,6 +184,9 @@ class Parser:
         description = stanza.get("X-Repolib-Name", "").strip() or stanza.get("Description", "").strip() or None
         signed_by = stanza.get("Signed-By", "").strip() or None
 
+        # Preserve architecture restriction — apt accepts both singular and plural field names
+        archs_raw = (stanza.get("Architectures") or stanza.get("Architecture") or "").split()
+
         agnostic = _is_suite_agnostic(suites, self._agnostic_names)
 
         repo = Repository(
@@ -196,6 +199,7 @@ class Parser:
             enabled=enabled,
             description=description,
             signed_by=signed_by,
+            architectures=archs_raw,
         )
         if agnostic:
             repo.availability = AvailabilityStatus.SUITE_AGNOSTIC
@@ -265,11 +269,25 @@ class Parser:
         else:
             return None
 
-        # Skip optional [options] block
+        # Extract signed-by= and arch= from optional [options] block before skipping it
+        signed_by: str | None = None
+        architectures: list[str] = []
         if idx < len(parts) and parts[idx].startswith("["):
-            while idx < len(parts) and not parts[idx].endswith("]"):
+            opts_parts: list[str] = []
+            while idx < len(parts):
+                token = parts[idx]
                 idx += 1
-            idx += 1  # consume closing ]
+                opts_parts.append(token)
+                if token.endswith("]"):
+                    break
+            opts_str = " ".join(opts_parts).strip("[]")
+            for opt in opts_str.split():
+                key, _, val = opt.partition("=")
+                key_lower = key.lower()
+                if key_lower == "signed-by" and val:
+                    signed_by = val
+                elif key_lower == "arch" and val:
+                    architectures = [a.strip() for a in val.split(",") if a.strip()]
 
         if idx + 2 > len(parts):
             return None
@@ -294,7 +312,8 @@ class Parser:
             components=components,
             enabled=enabled,
             description=None,
-            signed_by=None,
+            signed_by=signed_by,
+            architectures=architectures,
         )
         if agnostic:
             repo.availability = AvailabilityStatus.SUITE_AGNOSTIC

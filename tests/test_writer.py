@@ -71,6 +71,24 @@ class TestRepotoDeb822:
         parsed = Deb822(content)
         assert parsed["Components"] == "main contrib non-free"
 
+    def test_architectures_written_when_set(self):
+        repo = _make_repo(architectures=["amd64"])
+        content = repo_to_deb822(repo)
+        parsed = Deb822(content)
+        assert parsed["Architectures"] == "amd64"
+
+    def test_architectures_multi(self):
+        repo = _make_repo(architectures=["amd64", "arm64"])
+        content = repo_to_deb822(repo)
+        parsed = Deb822(content)
+        assert parsed["Architectures"] == "amd64 arm64"
+
+    def test_architectures_omitted_when_empty(self):
+        repo = _make_repo(architectures=[])
+        content = repo_to_deb822(repo)
+        assert "Architectures" not in content
+        assert "Architecture" not in content
+
     def test_output_is_valid_deb822(self):
         repo = _make_repo()
         content = repo_to_deb822(repo)

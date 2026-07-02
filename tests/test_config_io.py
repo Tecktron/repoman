@@ -35,7 +35,7 @@ class TestSaveConfig:
         assert "saved_at" in data
 
     def test_includes_all_repo_fields(self):
-        repo = _make_repo()
+        repo = _make_repo(architectures=["amd64"])
         data = json.loads(config_io.save_config([repo]))
         entry = data["repos"][0]
         assert entry["types"] == ["deb"]
@@ -45,6 +45,7 @@ class TestSaveConfig:
         assert entry["enabled"] is True
         assert entry["description"] == "Test PPA"
         assert entry["signed_by"] == "/usr/share/keyrings/testowner-testppa.gpg"
+        assert entry["architectures"] == ["amd64"]
         assert entry["source_file"] == "/etc/apt/sources.list.d/test.sources"
 
     def test_optional_fields_nullable(self):
@@ -174,7 +175,7 @@ class TestEntryToRepository:
         return base
 
     def test_reconstructs_all_fields(self):
-        entry = self._entry()
+        entry = self._entry(architectures=["amd64"])
         repo = config_io.entry_to_repository(entry)
         assert repo.uris == ["https://ppa.launchpadcontent.net/testowner/testppa/ubuntu"]
         assert repo.suites == ["noble"]
@@ -182,7 +183,14 @@ class TestEntryToRepository:
         assert repo.enabled is True
         assert repo.description == "Test PPA"
         assert repo.signed_by == "/usr/share/keyrings/test.gpg"
+        assert repo.architectures == ["amd64"]
         assert repo.source_file == Path("/etc/apt/sources.list.d/testowner-testppa.sources")
+
+    def test_architectures_defaults_to_empty_when_missing(self):
+        """Old .repoman files without 'architectures' key load without error."""
+        entry = self._entry()
+        repo = config_io.entry_to_repository(entry)
+        assert repo.architectures == []
 
     def test_sets_file_format_to_deb822(self):
         repo = config_io.entry_to_repository(self._entry())

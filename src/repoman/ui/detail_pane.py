@@ -175,17 +175,28 @@ class DetailPane(Gtk.Box):
 
     def _refresh_signing_row(self, repo: Repository) -> None:
         signed_by = repo.signed_by
-        if signed_by and Path(signed_by).exists():
+        if not signed_by:
+            self._signing_row.set_subtitle("No signing key configured")
+            self._signing_row.remove_css_class("warning")
+            self._signing_key_btn.set_label("Add")
+        elif signed_by.lstrip().startswith("-----BEGIN PGP"):
+            # Inline OpenPGP key embedded directly in the .sources file
+            self._signing_row.set_subtitle("Inline OpenPGP key")
+            self._signing_row.remove_css_class("warning")
+            self._signing_key_btn.set_label("Edit")
+        elif not signed_by.startswith("/"):
+            # Key fingerprint or other non-path reference (e.g. keyring ID)
+            display = signed_by if len(signed_by) <= 40 else signed_by[:40] + "…"
+            self._signing_row.set_subtitle(display)
+            self._signing_row.remove_css_class("warning")
+            self._signing_key_btn.set_label("Edit")
+        elif Path(signed_by).exists():
             self._signing_row.set_subtitle(Path(signed_by).name)
             self._signing_row.remove_css_class("warning")
             self._signing_key_btn.set_label("Edit")
-        elif signed_by:
+        else:
             self._signing_row.set_subtitle("Key file not found")
             self._signing_row.add_css_class("warning")
-            self._signing_key_btn.set_label("Add")
-        else:
-            self._signing_row.set_subtitle("No signing key configured")
-            self._signing_row.remove_css_class("warning")
             self._signing_key_btn.set_label("Add")
 
     def _on_signing_key_clicked(self, _btn: Gtk.Button) -> None:

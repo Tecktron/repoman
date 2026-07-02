@@ -131,6 +131,43 @@ class TestOneLineParsing:
         assert len(repos) == 1
         assert repos[0].uris == ["https://example.com"]
         assert repos[0].suites == ["noble"]
+        assert repos[0].signed_by == "/etc/apt/keyrings/test.gpg"
+        assert repos[0].architectures == ["amd64"]
+
+    def test_one_line_signed_by_only_in_options(self, parser, tmp_path):
+        """signed-by= in [options] is extracted even without arch=."""
+        (tmp_path / "vpn.list").write_text(
+            "deb [signed-by=/etc/apt/keyrings/openvpn.asc] https://packages.openvpn.net/openvpn3/debian noble main\n"
+        )
+        repos = parser.load_all()
+        assert len(repos) == 1
+        assert repos[0].signed_by == "/etc/apt/keyrings/openvpn.asc"
+        assert repos[0].architectures == []
+
+    def test_one_line_multi_arch_in_options(self, parser, tmp_path):
+        """arch=amd64,arm64 is split into a list."""
+        (tmp_path / "multi.list").write_text("deb [arch=amd64,arm64] https://example.com stable main\n")
+        repos = parser.load_all()
+        assert repos[0].architectures == ["amd64", "arm64"]
+
+    def test_deb822_architectures_field_preserved(self, parser, tmp_path):
+        (tmp_path / "chrome.sources").write_text(
+            "Types: deb\nURIs: https://dl.google.com/linux/chrome-stable/deb/\n"
+            "Suites: stable\nComponents: main\nArchitectures: amd64\n"
+            "Signed-By: /usr/share/keyrings/google-chrome.gpg\n"
+        )
+        repos = parser.load_all()
+        assert len(repos) == 1
+        assert repos[0].architectures == ["amd64"]
+
+    def test_deb822_architecture_singular_field(self, parser, tmp_path):
+        """apt accepts both 'Architecture' and 'Architectures'; both should be read."""
+        (tmp_path / "slack.sources").write_text(
+            "Types: deb\nURIs: https://packagecloud.io/slacktechnologies/slack/debian/\n"
+            "Suites: jessie\nComponents: main\nArchitecture: amd64\n"
+        )
+        repos = parser.load_all()
+        assert repos[0].architectures == ["amd64"]
 
     def test_malformed_deb822_stanza_skipped(self, parser, tmp_path):
         # Stanza missing required fields
