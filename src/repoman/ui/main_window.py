@@ -257,8 +257,8 @@ class RepomanWindow(Gtk.ApplicationWindow):
         app.set_accels_for_action("win.upgrade-wizard", ["<Primary>u"])
         app.set_accels_for_action("win.show-shortcuts", ["<Primary>F1"])
         app.set_accels_for_action("win.add-repo", ["<Primary>n"])
-        app.set_accels_for_action("win.refresh-repos", ["<Primary>r"])
-        app.set_accels_for_action("win.reload-repos", ["F5"])
+        app.set_accels_for_action("win.refresh-repos", ["F5"])
+        app.set_accels_for_action("win.reload-repos", ["<Primary>r"])
         app.set_accels_for_action("win.save-config", ["<Primary>s"])
 
     # ------------------------------------------------------------------
@@ -590,7 +590,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             def _do_refresh() -> None:
                 try:
                     client = PackageKitGlib.Client.new()
-                    results = client.refresh_cache(False, None, None, None)
+                    results = client.refresh_cache(False, None, lambda p, t, d: None, None)
                     exit_code = results.get_exit_code()
                     if exit_code == PackageKitGlib.ExitEnum.SUCCESS:
                         GLib.idle_add(self._on_reload_success)
@@ -957,8 +957,8 @@ class RepomanWindow(Gtk.ApplicationWindow):
         repos_group = Adw.PreferencesGroup(title="Repository management")
         for label, accel in [
             ("Add repository", "<Primary>n"),
-            ("Refresh repository list", "<Primary>r"),
-            ("Reload repositories (apt update)", "F5"),
+            ("Refresh repository list", "F5"),
+            ("Reload repositories (apt update)", "<Primary>r"),
             ("Save repository state", "<Primary>s"),
         ]:
             row = Adw.ActionRow(title=label)
