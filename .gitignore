@@ -17,6 +17,17 @@ dist/
 .coverage
 help-docs/site/
 sphinx/_build/
+
+# Debian build artifacts
+.pybuild/
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.debhelper.log
+debian/*.postinst.debhelper
+debian/*.prerm.debhelper
+debian/*.substvars
+debian/repoman/
 mempalace.yaml
 entities.json
 .claude
