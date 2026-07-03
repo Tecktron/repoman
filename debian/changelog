@@ -1,3 +1,10 @@
+repoman (0.1.3-1) noble; urgency=low
+
+  * Add header navigation dropdown menu to all doc pages.
+  * Fix broken /developers/ page when navigating via Material instant nav.
+
+ -- Tecktron Studios <software@tecktron.net>  Thu, 03 Jul 2026 00:00:00 +0000
+
 repoman (0.1.2-1) noble; urgency=low
 
   * Fix Sphinx API docs not appearing in deployed documentation site.

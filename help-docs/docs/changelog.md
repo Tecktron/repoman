@@ -2,6 +2,15 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.3 — 2026-07-03
+
+### Documentation
+
+- Add header navigation dropdown menu to all doc pages
+- Fix broken `/developers/` page when clicking from Material's instant navigation
+
+---
+
 ## 0.1.2 — 2026-07-03
 
 ### Documentation

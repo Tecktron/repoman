@@ -181,6 +181,66 @@
   background-color: var(--rp-red);
 }
 
+/* --- Header nav dropdown ---------------------------------- */
+.rp-nav-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rp-nav-dropdown__btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--rp-red-bright);
+  display: flex;
+  align-items: center;
+  padding: 0 0.4rem;
+  opacity: 0.8;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.rp-nav-dropdown__btn:hover,
+.rp-nav-dropdown--open .rp-nav-dropdown__btn {
+  opacity: 1;
+  color: var(--md-primary-fg-color);
+}
+
+.rp-nav-dropdown__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  min-width: 230px;
+  background: var(--md-default-bg-color--lighter);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+  z-index: 100;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+.rp-nav-dropdown--open .rp-nav-dropdown__menu {
+  display: block;
+}
+
+.rp-nav-dropdown__menu li a {
+  display: block;
+  padding: 0.5rem 1.1rem;
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  transition: background 0.12s, color 0.12s;
+}
+
+.rp-nav-dropdown__menu li a:hover {
+  background: var(--md-default-bg-color--lightest);
+  color: var(--md-primary-fg-color);
+}
+
 /* --- Feature cards ---------------------------------------- */
 .md-typeset .grid.cards > ul > li {
   border-color: var(--md-default-fg-color--lightest);

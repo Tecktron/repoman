@@ -24,7 +24,6 @@ theme:
     text: Roboto
     code: Roboto Mono
   features:
-    - navigation.instant
     - navigation.tracking
     - navigation.top
     - content.code.copy
@@ -33,6 +32,9 @@ theme:
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/nav-dropdown.js
 
 nav:
   - Home: index.md
