@@ -2,9 +2,13 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.1.1 — 2026-07-03
 
-Initial public release — see below.
+### Documentation
+
+- Added screenshots throughout the help docs
+- Published full Sphinx API reference at `/developers/`
+- Fixed GitHub Pages deployment workflow
 
 ---
 

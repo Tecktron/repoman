@@ -1,3 +1,9 @@
+repoman (0.1.1-1) noble; urgency=low
+
+  * Updated documentation with screenshots and full Sphinx API reference.
+
+ -- Tecktron Studios <software@tecktron.net>  Thu, 03 Jul 2026 00:00:00 +0000
+
 repoman (0.1.0-1) noble; urgency=low
 
   * Initial release.
