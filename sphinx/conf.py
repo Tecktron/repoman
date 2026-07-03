@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 project = "Repoman"
 author = "Tecktron"
-release = "0.1.4"
+release = "0.1.5"
 copyright = f"{datetime.now().year}, Tecktron"
 
 extensions = [

@@ -2,6 +2,14 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.5 — 2026-07-03
+
+### CI
+
+- Add `workflow_dispatch` trigger to the `.deb` build workflow so it can be run manually without requiring a new release tag
+
+---
+
 ## 0.1.4 — 2026-07-03
 
 ### Documentation
