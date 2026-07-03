@@ -6,11 +6,11 @@ State files let you save a snapshot of your repository configuration and restore
 
 ### Saving
 
-**Tools → State Management → Save…** opens a file dialog. The default filename is `state-YYYY-MM-DD.repoman`. Choose any location; the file is written as your normal user with no polkit prompt.
+**Repos → Save state…** opens a file dialog. The default filename is `state-YYYY-MM-DD.repoman`. Choose any location; the file is written as your normal user with no polkit prompt.
 
 ### Loading
 
-**Tools → State Management → Load…** opens a file dialog. repoman reads the file and compares it against the repositories currently on the system, matching by URI.
+**Repos → Load state…** opens a file dialog. repoman reads the file and compares it against the repositories currently on the system, matching by URI.
 
 Three outcomes per repository in the file:
 
@@ -27,7 +27,7 @@ If any repositories from the file are not found on the system, a dialog lists th
 - **Add all N** — same, but respects the `enabled` state from the file
 
 !!! warning "Signing keys"
-    If a missing repository has a `signed_by` path in the saved file, repoman warns you that the keyring file may also need to be installed. The key file itself is not stored in the state file — only the path. Install the key manually before enabling the repository.
+    If a missing repository references an external keyring file (e.g. `/usr/share/keyrings/example.gpg`), that file is **not** stored in the state file — only the path. You will need to install the key on the new machine before APT can verify packages from that repository. Repositories with inline PGP keys embedded directly in the `.sources` file do travel in the state file and require no extra step.
 
 Repositories on the system that are absent from the file are left untouched.
 
@@ -67,7 +67,8 @@ Fields:
 | `components` | string[] | Repository components (e.g. `["main", "contrib"]`). |
 | `enabled` | boolean | Whether the repository should be enabled. |
 | `description` | string or null | Human-readable name (`X-Repolib-Name`). |
-| `signed_by` | string or null | Path to the GPG keyring file. |
+| `architectures` | string[] | Architecture filter (e.g. `["amd64"]`). Empty list means all architectures. |
+| `signed_by` | string or null | Path to a GPG keyring file, or an inline ASCII-armored PGP key block. |
 | `source_file` | string | Original path in `sources.list.d/` — used as a hint when creating missing repos. |
 
 ## Suite-agnostic names

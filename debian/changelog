@@ -1,3 +1,11 @@
+repoman (0.1.4-1) noble; urgency=low
+
+  * PPA published; update install instructions and remove pre-release warnings.
+  * Fix Save state / Load state menu path documented as Tools → State Management
+    (correct path: Repos menu).
+
+ -- Tecktron Studios <software@tecktron.net>  Thu, 03 Jul 2026 00:00:00 +0000
+
 repoman (0.1.3-1) noble; urgency=low
 
   * Add header navigation dropdown menu to all doc pages.

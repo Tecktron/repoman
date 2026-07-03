@@ -11,11 +11,6 @@ All other runtime dependencies are standard system packages available from the U
 
 ## Via PPA (recommended)
 
-!!! warning "Not yet available"
-    The PPA is not yet published. Watch the [GitHub repository](https://github.com/Tecktron/repoman) for the announcement.
-
-Once available:
-
 ```bash
 sudo add-apt-repository ppa:tecktron-studios/repoman
 sudo apt update && sudo apt install repoman
@@ -25,10 +20,7 @@ sudo apt update && sudo apt install repoman
 
 ## Via .deb package
 
-!!! warning "Not yet published"
-    Signed `.deb` packages will be attached to each [GitHub release](https://github.com/Tecktron/repoman/releases) once the first release is tagged.
-
-Download the `.deb` from the releases page and install it:
+Download the `.deb` from the [GitHub releases page](https://github.com/Tecktron/repoman/releases) and install it:
 
 ```bash
 sudo dpkg -i repoman_*.deb
@@ -39,7 +31,7 @@ sudo apt install -f   # resolves any missing dependencies
 
 ## Manual install from source
 
-The current working installation method. Installs to `/usr/` by default.
+For developers or those who want to build from source. Installs to `/usr/` by default.
 
 ### 1. Install runtime dependencies
 

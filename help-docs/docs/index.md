@@ -14,9 +14,6 @@ sudo apt update && sudo apt install repoman
 ```
 </div>
 
-!!! warning "Pre-release"
-    repoman is not yet publicly available. Watch the [GitHub repository](https://github.com/Tecktron/repoman) for the initial release announcement.
-
 ---
 
 ## What repoman does
@@ -53,7 +50,7 @@ repoman catches both — and it doesn't stop there. Between upgrades it's a full
 
     ---
 
-    Paste a `deb` one-liner or a full DEB822 block (Auto tab), or fill in fields manually (Manual tab). Optionally fetch and install the signing key in the same step.
+    Paste a `deb` one-liner or a full DEB822 block (URL tab), or fill in fields manually (Manual tab). Optionally fetch and install the signing key in the same step.
 
 -   :material-delete-outline: __Remove repositories__
 

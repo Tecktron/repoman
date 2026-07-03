@@ -2,6 +2,16 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.4 — 2026-07-03
+
+### Documentation
+
+- PPA published at `ppa:tecktron-studios/repoman` — install instructions updated
+- Fix incorrect menu path for Save state / Load state (Repos menu, not Tools)
+- Remove pre-release warnings now that the initial release is available
+
+---
+
 ## 0.1.3 — 2026-07-03
 
 ### Documentation
