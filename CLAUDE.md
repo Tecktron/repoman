@@ -3,6 +3,17 @@
 GTK4 + libadwaita APT repository manager for Ubuntu/Xubuntu.
 "Repo Man" — as in repossessing your repos after an upgrade. Also the 1984 film.
 
+---
+
+## Decision discipline — MANDATORY
+
+When presenting the user with a choice between options, **STOP and wait for their answer.**
+Never pick an option on their behalf. Never assume silence or a topic change is consent.
+If the user moves on without choosing, ask again before acting.
+This applies to every decision, no matter how minor it seems.
+
+---
+
 **App ID:** `io.github.Tecktron.repoman`
 **Platform minimum:** Xubuntu 24.04 LTS (libadwaita 1.5.0)
 **Target environment:** Xfce/Xfwm4 (system-decorated windows, SSD, no CSD)
