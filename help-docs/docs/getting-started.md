@@ -9,9 +9,7 @@ The main window has two panels:
 - **Left** — the repository list. Every third-party APT repository in `/etc/apt/sources.list.d/` appears here, sorted alphabetically. Ubuntu's own repositories are hidden.
 - **Right** — the detail pane. Click any repository to see and edit its settings.
 
-<!-- screenshot: main-window-overview -->
-!!! example ""
-    *Screenshot coming soon.*
+![Main window overview](assets/screenshots/main-window-overview.png)
 
 ## The upgrade banner
 
@@ -22,9 +20,7 @@ If repoman finds repositories that need attention, a yellow banner appears at th
 
 The banner shows how many repositories need attention. Click **Review** to open the upgrade wizard, or dismiss it and deal with them manually via the detail pane.
 
-<!-- screenshot: main-window-upgrade-banner -->
-!!! example ""
-    *Screenshot coming soon.*
+![Upgrade banner](assets/screenshots/main-window-upgrade-banner.png)
 
 You can also open the upgrade wizard at any time via **Tools → Run Upgrade Assistant**, whether the banner is visible or not.
 

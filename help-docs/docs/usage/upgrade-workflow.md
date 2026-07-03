@@ -18,9 +18,7 @@ The first page lists every repository that repoman thinks needs attention. By de
 
 Click **Check availability** when you're satisfied with the selection.
 
-<!-- screenshot: wizard-step1-select -->
-!!! example ""
-    *Screenshot coming soon.*
+![Wizard step 1 — select repositories](../assets/screenshots/wizard-step1-select.png)
 
 ## Step 2 — Check availability
 
@@ -40,9 +38,7 @@ Hover over any icon to see a tooltip with the full status description.
 
 Once all checks resolve, the **Next** button activates. If you navigate back to Step 1 and return, the check results are preserved — the check does not run again.
 
-<!-- screenshot: wizard-step2-checking -->
-!!! example ""
-    *Screenshot coming soon.*
+![Wizard step 2 — checking availability](../assets/screenshots/wizard-step2-checking.png)
 
 !!! note
     Network checks can take several seconds per repository. If a check times out or fails with a network error, the repository is marked unavailable and skipped.
@@ -56,9 +52,7 @@ The confirmation page shows exactly what will happen:
 
 If there are no repositories to re-enable (everything is either already current or suite-agnostic), the auth row and the repository groups are hidden, and the button reads **Done**. Clicking Done closes the wizard without making any changes and without a polkit prompt.
 
-<!-- screenshot: wizard-step3-confirm -->
-!!! example ""
-    *Screenshot coming soon.*
+![Wizard step 3 — confirm changes](../assets/screenshots/wizard-step3-confirm.png)
 
 ## Applying changes
 

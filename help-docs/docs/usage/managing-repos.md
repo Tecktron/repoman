@@ -21,9 +21,7 @@ The detail pane also has two utility buttons at the top right:
 
 Click **Save** to write the changes. A polkit authentication dialog appears because writing to `/etc/apt/sources.list.d/` requires root.
 
-<!-- screenshot: detail-pane-edit -->
-!!! example ""
-    *Screenshot coming soon.*
+![Detail pane edit fields](../assets/screenshots/detail-pane-edit.png)
 
 !!! note "Legacy .list format"
     If a `.list` repository has no description, editing the Name field and saving converts it to DEB822 `.sources` format automatically. The old `.list` file is deleted and the new `.sources` file is written in a single polkit operation.
@@ -74,9 +72,7 @@ When a key URL is provided, the signing key path is filled automatically based o
 
 Click **Add Repository**. If a key URL was provided, the key is downloaded, verified, and written alongside the `.sources` file — both in a single polkit prompt.
 
-<!-- screenshot: add-repo-dialog -->
-!!! example ""
-    *Screenshot coming soon.*
+![Add repository dialog](../assets/screenshots/add-repo-dialog.png)
 
 ## Removing a repository
 
@@ -117,9 +113,7 @@ Click **Edit** to open the key editor in edit mode.
 - **Key content tab** — shows the current key in ASCII-armored format. For inline keys, the full PGP block is shown. For file-based keys, the key is read from disk and displayed.
 - **Update tab** — replace the key from a file, URL, or (for inline keys) by pasting a new key block.
 
-<!-- screenshot: key-editor -->
-!!! example ""
-    *Screenshot coming soon.*
+![Key editor](../assets/screenshots/key-editor.png)
 
 ## Disabling all repositories
 
