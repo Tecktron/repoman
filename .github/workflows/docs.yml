@@ -36,7 +36,7 @@ jobs:
           mkdocs build
 
       - name: Merge Sphinx output into MkDocs site
-        run: cp -r sphinx/_build/html help-docs/site/developers
+        run: cp -r sphinx/_build/html/. help-docs/site/developers/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
