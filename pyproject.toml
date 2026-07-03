@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repoman"
-version = "0.1.1"
+version = "0.1.2"
 description = "GTK4 APT repository manager for Ubuntu/Xubuntu"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}

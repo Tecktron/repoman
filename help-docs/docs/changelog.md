@@ -2,6 +2,14 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.2 — 2026-07-03
+
+### Documentation
+
+- Fix Sphinx API reference not appearing at `/developers/` in the deployed site
+
+---
+
 ## 0.1.1 — 2026-07-03
 
 ### Documentation
