@@ -2,6 +2,18 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.6 — 2026-07-07
+
+### Fixed
+
+- About dialog now reads version from `repoman.__version__` instead of a hardcoded string — no longer shows stale version across releases.
+
+### Changed
+
+- Removed "Reload repositories (apt update)" from the Tools menu; `Ctrl+R` now opens Software Updater (if installed). Software Updater already provides `apt update` and package upgrades, making the built-in reload redundant.
+
+---
+
 ## 0.1.5 — 2026-07-03
 
 ### CI

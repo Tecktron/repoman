@@ -1,3 +1,10 @@
+repoman (0.1.6-1) noble; urgency=low
+
+  * Fix About dialog showing stale version; single-source from repoman.__version__.
+  * Remove built-in apt update from Tools menu; Ctrl+R now opens Software Updater.
+
+ -- Tecktron Studios <software@tecktron.net>  Mon, 07 Jul 2026 00:00:00 +0000
+
 repoman (0.1.5-1) noble; urgency=low
 
   * Add workflow_dispatch to .deb build workflow for manual triggering.
