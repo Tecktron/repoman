@@ -7,9 +7,11 @@ from pathlib import Path
 # Make the repoman package importable without installing it
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from repoman import __version__  # noqa: E402
+
 project = "Repoman"
 author = "Tecktron"
-release = "0.1.5"
+release = __version__
 copyright = f"{datetime.now().year}, Tecktron"
 
 extensions = [

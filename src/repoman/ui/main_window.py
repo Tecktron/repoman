@@ -19,7 +19,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from .. import config_io
+from .. import __version__, config_io
 from ..checker import get_network_error, reset_network_state
 from ..models import Repository
 from ..parser import Parser
@@ -999,7 +999,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         name_label = Gtk.Label(label="Repoman")
         name_label.add_css_class("title-1")
         header_box.append(name_label)
-        version_lbl = Gtk.Label(label="Version 0.1.0")
+        version_lbl = Gtk.Label(label=f"Version {__version__}")
         version_lbl.set_opacity(0.55)
         header_box.append(version_lbl)
         box.append(header_box)

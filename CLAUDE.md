@@ -423,9 +423,6 @@ Repos on the system but absent from the file are left untouched.
   then jumps). Fix: pre-realize positioning with `get_default_size()`. Deferred.
 - **`.list` → `.sources` conversion**: converter.py is written; detail_pane.py
   save path triggers it correctly. Not yet exercised in a real-world test.
-- **Wizard dry-run test**: the full wizard flow (banner → select → check →
-  confirm → polkit write → reload) hasn't been exercised end-to-end with test
-  `.sources` files. See `test-plan.md` for the full test procedure.
 - **Distribution**: PPA at `ppa:tecktron-studios/repoman` not yet created.
 
 ---
