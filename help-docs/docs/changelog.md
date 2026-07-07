@@ -64,5 +64,4 @@ First release.
 - Annotations: descriptions stored as `X-Repolib-Name:` in `.sources` files, survive upgrades
 - Legacy `.list` → DEB822 `.sources` conversion on save
 - State management: save and load `.repoman` snapshots
-- Reload repository metadata via PackageKit (`apt update` equivalent)
 - Privilege separation: GUI runs as normal user, writes via polkit helper

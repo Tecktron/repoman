@@ -121,8 +121,6 @@ Click **Edit** to open the key editor in edit mode.
 
 Re-enable them individually from the detail pane, or use the upgrade wizard after the upgrade completes.
 
-## Reloading repository metadata
+## Updating packages
 
-**Tools → Reload repositories (apt update)…** runs the equivalent of `sudo apt update` via PackageKit. A toast appears while the refresh is in progress and updates when it completes.
-
-This does not install or upgrade any packages — it only refreshes the package index.
+Use **Tools → Software Updater** (or press `Ctrl+R`) to open Ubuntu's Software Updater, which handles `apt update` and package upgrades. If Software Updater is not installed, the menu item and shortcut are inactive.

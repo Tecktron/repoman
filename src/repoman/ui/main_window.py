@@ -150,7 +150,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         tools = Gio.Menu()
         tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
         tools.append("Check pre-update compatibility…", "win.compat-check")
-        tools.append("Reload repositories (apt update)…", "win.reload-repos")
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
         companion_section.append("Software & Updates", "win.launch-software-properties")
@@ -241,11 +240,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._remove_multiple_action.set_enabled(False)
         self.add_action(self._remove_multiple_action)
 
-        # Reload repos action
-        reload_action = Gio.SimpleAction.new("reload-repos", None)
-        reload_action.connect("activate", lambda _a, _p: self._reload_repos())
-        self.add_action(reload_action)
-
         # Focus search entry action — used by Ctrl+F accelerator
         focus_search = Gio.SimpleAction.new("focus-search", None)
         focus_search.connect("activate", lambda _a, _p: self._search_entry.grab_focus())
@@ -258,7 +252,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         app.set_accels_for_action("win.show-shortcuts", ["<Primary>F1"])
         app.set_accels_for_action("win.add-repo", ["<Primary>n"])
         app.set_accels_for_action("win.refresh-repos", ["F5"])
-        app.set_accels_for_action("win.reload-repos", ["<Primary>r"])
+        app.set_accels_for_action("win.launch-updater", ["<Primary>r"])
         app.set_accels_for_action("win.save-config", ["<Primary>s"])
 
     # ------------------------------------------------------------------
@@ -578,84 +572,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         return GLib.SOURCE_REMOVE
 
     # ------------------------------------------------------------------
-    # Reload repositories
-    # ------------------------------------------------------------------
-
-    def _reload_repos(self) -> None:
-        self._toast_overlay.add_toast(Adw.Toast(title="Updating repositories…", timeout=0))
-        try:
-            gi.require_version("PackageKitGlib", "1.0")
-            from gi.repository import PackageKitGlib
-
-            def _do_refresh() -> None:
-                try:
-                    client = PackageKitGlib.Client.new()
-                    results = client.refresh_cache(False, None, lambda p, t, d: None, None)
-                    exit_code = results.get_exit_code()
-                    if exit_code == PackageKitGlib.ExitEnum.SUCCESS:
-                        GLib.idle_add(self._on_reload_success)
-                    else:
-                        GLib.idle_add(self._on_reload_failure, f"PackageKit exit: {exit_code.value_name}")
-                except Exception as exc:
-                    GLib.idle_add(self._on_reload_failure, str(exc))
-
-            threading.Thread(target=_do_refresh, daemon=True).start()
-        except Exception:
-            self._run_apt_update_fallback()
-
-    def _run_apt_update_fallback(self) -> None:
-        def _do_update() -> None:
-            result = subprocess.run(
-                [PKEXEC, "/usr/bin/apt-get", "-q", "update"],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                GLib.idle_add(self._on_reload_success)
-            else:
-                GLib.idle_add(self._on_reload_failure, (result.stdout + result.stderr).strip())
-
-        threading.Thread(target=_do_update, daemon=True).start()
-
-    def _on_reload_success(self) -> bool:
-        self._toast_overlay.add_toast(Adw.Toast(title="Repositories updated", timeout=3))
-        return GLib.SOURCE_REMOVE
-
-    def _on_reload_failure(self, message: str) -> bool:
-        dlg = Gtk.Window(
-            title="Update failed",
-            transient_for=self,
-            modal=True,
-            resizable=False,
-            default_width=440,
-        )
-        dlg.set_icon_name("io.github.Tecktron.repoman")
-        box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_top=18,
-            margin_bottom=18,
-            margin_start=18,
-            margin_end=18,
-        )
-        scroll = Gtk.ScrolledWindow(
-            height_request=180,
-            hscrollbar_policy=Gtk.PolicyType.NEVER,
-        )
-        lbl = Gtk.Label(label=message, wrap=True, xalign=0, selectable=True)
-        scroll.set_child(lbl)
-        box.append(scroll)
-        btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
-        ok_btn = Gtk.Button(label="OK")
-        ok_btn.connect("clicked", lambda _: dlg.close())
-        btn_row.append(ok_btn)
-        box.append(btn_row)
-        dlg.set_child(box)
-        center_on_parent(dlg)
-        dlg.present()
-        return GLib.SOURCE_REMOVE
-
-    # ------------------------------------------------------------------
     # Wizard
     # ------------------------------------------------------------------
 
@@ -958,7 +874,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         for label, accel in [
             ("Add repository", "<Primary>n"),
             ("Refresh repository list", "F5"),
-            ("Reload repositories (apt update)", "<Primary>r"),
+            ("Open Software Updater", "<Primary>r"),
             ("Save repository state", "<Primary>s"),
         ]:
             row = Adw.ActionRow(title=label)
