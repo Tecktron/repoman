@@ -17,20 +17,21 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, Gio, GLib, Gtk, Pango
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from .. import __version__, config_io
 from ..checker import get_network_error, reset_network_state
-from ..models import AvailabilityStatus, Repository
+from ..models import Repository
 from ..parser import Parser
 from ..paths import GDEBI, PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
-from ..upgrade_info import check_ppa_for_codename, get_all_known_codenames
+from ..upgrade_info import get_all_known_codenames
 from ..utils import get_current_codename, repos_needing_attention
 from ..writer import repo_to_deb822
 from .detail_pane import DetailPane
 from .position import center_on_parent, center_on_screen
 from .repo_row import RepoRow
 from .wizard.dialog import RepomanWizardDialog
+from .wizard.restore_dialog import RestoreWizardDialog
 
 
 class RepomanWindow(Gtk.ApplicationWindow):
@@ -55,6 +56,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._parser = Parser()
         self._repos: list[Repository] = []
         self._wizard: RepomanWizardDialog | None = None
+        self._restore_wizard: RestoreWizardDialog | None = None
         self._rows: list[RepoRow] = []
 
         self._build_ui()
@@ -156,6 +158,9 @@ class RepomanWindow(Gtk.ApplicationWindow):
         companion_section.append("Software & Updates", "win.launch-software-properties")
         companion_section.append("Install a .deb package…", "win.launch-gdebi")
         tools.append_section(None, companion_section)
+        exit_section = Gio.Menu()
+        exit_section.append("Exit", "app.quit")
+        tools.append_section(None, exit_section)
         model.append_submenu("Tools", tools)
 
         # Repos — flat sections, no nested submenu (submenu stays open on sibling hover in GTK4)
@@ -519,7 +524,20 @@ class RepomanWindow(Gtk.ApplicationWindow):
         scroll.set_child(list_box_wrapper)
         outer.append(scroll)
 
-        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        btn_row = Gtk.Box(spacing=6, margin_top=6)
+        select_disabled_btn = Gtk.Button(label="Select disabled")
+        has_disabled = any(not r.enabled for r, _ in checks)
+        select_disabled_btn.set_sensitive(has_disabled)
+
+        def _select_disabled(_btn: Gtk.Button) -> None:
+            for repo, check in checks:
+                if not repo.enabled:
+                    check.set_active(True)
+
+        select_disabled_btn.connect("clicked", _select_disabled)
+        btn_row.append(select_disabled_btn)
+        spacer = Gtk.Box(hexpand=True)
+        btn_row.append(spacer)
         cancel_btn = Gtk.Button(label="Cancel")
         cancel_btn.connect("clicked", lambda _: dlg.close())
         self._remove_sel_btn = Gtk.Button(label="Remove 0 selected")
@@ -644,7 +662,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         if err:
             self._toast_overlay.add_toast(
                 Adw.Toast(
-                    title="Network error during availability check — some results may be incomplete",
+                    title="Network error during availability check - some results may be incomplete",
                     timeout=6,
                 )
             )
@@ -755,7 +773,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         if missing:
             self._show_missing_repos_dialog(missing)
         elif changed == 0:
-            self._toast_overlay.add_toast(Adw.Toast(title="No changes — system already matches config", timeout=3))
+            self._toast_overlay.add_toast(Adw.Toast(title="No changes - system already matches config", timeout=3))
         return GLib.SOURCE_REMOVE
 
     def _after_config_write_failure(self, message: str, changed_repos: list[tuple[Repository, bool]]) -> bool:
@@ -775,171 +793,19 @@ class RepomanWindow(Gtk.ApplicationWindow):
         actions = [
             config_io.classify_restore_entry(entry, saved_codename, current_codename, all_known) for entry in saved
         ]
-
-        ppa_indices = [i for i, a in enumerate(actions) if a == "ppa_check"]
-        if not ppa_indices:
-            self._show_restore_summary_dialog(saved, actions, current_codename)
-            return
-
-        check_toast = Adw.Toast(title=f"Checking {len(ppa_indices)} PPA(s) for {current_codename}…", timeout=0)
-        self._toast_overlay.add_toast(check_toast)
-
-        def _check_ppas() -> None:
-            for i in ppa_indices:
-                entry = saved[i]
-                repo = config_io.entry_to_repository(entry)
-                if repo.ppa_owner and repo.ppa_name:
-                    status, _ = check_ppa_for_codename(repo.ppa_owner, repo.ppa_name, current_codename)
-                    actions[i] = "update_suite" if status == AvailabilityStatus.AVAILABLE else "add_disabled"
-                else:
-                    actions[i] = "add_disabled"
-            GLib.idle_add(_on_done)
-
-        def _on_done() -> bool:
-            check_toast.dismiss()
-            self._show_restore_summary_dialog(saved, actions, current_codename)
-            return GLib.SOURCE_REMOVE
-
-        threading.Thread(target=_check_ppas, daemon=True).start()
-
-    def _show_restore_summary_dialog(self, saved: list[dict], actions: list[str], current_codename: str) -> None:
-        def _display(entry: dict) -> str:
-            return entry.get("description") or (entry.get("uris") or [""])[0]
-
-        update_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "update_suite"]
-        disabled_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "add_disabled"]
-        unchanged_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "restore_as_is"]
-
-        dlg = Gtk.Window(
-            title=f"Restore to {current_codename}",
+        wizard = RestoreWizardDialog(
+            saved=saved,
+            actions=actions,
+            saved_codename=saved_codename,
+            current_codename=current_codename,
+            live_repos=self._repos,
+            on_complete=self._show_missing_repos_dialog,
             transient_for=self,
-            modal=True,
-            resizable=False,
-            default_width=440,
         )
-        dlg.set_icon_name("io.github.Tecktron.repoman")
-
-        outer = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_top=18,
-            margin_bottom=18,
-            margin_start=18,
-            margin_end=18,
-        )
-
-        def _add_group(title: str, entries: list) -> None:
-            if not entries:
-                return
-            header = Gtk.Label(label=f"<b>{title}</b>", use_markup=True, xalign=0, margin_top=6)
-            outer.append(header)
-            for entry, _ in entries:
-                lbl = Gtk.Label(
-                    label=f"  • {_display(entry)}",
-                    xalign=0,
-                    ellipsize=Pango.EllipsizeMode.END,
-                    max_width_chars=52,
-                )
-                outer.append(lbl)
-
-        _add_group(f"Updating suite to {current_codename}", update_entries)
-        _add_group("Adding as disabled (not available)", disabled_entries)
-        _add_group("Restoring unchanged", unchanged_entries)
-
-        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
-        cancel_btn = Gtk.Button(label="Cancel")
-        cancel_btn.connect("clicked", lambda _: dlg.close())
-        btn_row.append(cancel_btn)
-        apply_btn = Gtk.Button(label="Apply")
-        apply_btn.add_css_class("suggested-action")
-        apply_btn.connect(
-            "clicked",
-            lambda _: (dlg.close(), self._apply_restore(saved, actions, current_codename)),
-        )
-        btn_row.append(apply_btn)
-        outer.append(btn_row)
-
-        dlg.set_child(outer)
-        center_on_parent(dlg)
-        dlg.present()
-
-    def _apply_restore(self, saved: list[dict], actions: list[str], current_codename: str) -> None:
-        matched, missing = config_io.match_repos(saved, self._repos)
-        action_map = {id(e): a for e, a in zip(saved, actions, strict=True)}
-
-        writes = []
-        changed_repos: list[tuple[Repository, bool, list[str]]] = []
-
-        for entry, live in matched:
-            action = action_map.get(id(entry), "restore_as_is")
-            original_enabled = live.enabled
-            original_suites = list(live.suites) if action == "update_suite" else None
-            changed = False
-
-            if action == "update_suite":
-                live.suites = [current_codename]
-                live.enabled = entry.get("enabled", live.enabled)
-                changed = True
-            elif action == "add_disabled":
-                live.enabled = False
-                changed = True
-            elif action == "restore_as_is":
-                if entry.get("enabled") != live.enabled:
-                    live.enabled = entry["enabled"]
-                    changed = True
-
-            if changed:
-                writes.append({"path": str(live.source_file), "content": repo_to_deb822(live)})
-                changed_repos.append((live, original_enabled, original_suites))
-
-        # Pre-adapt missing entries
-        for entry in missing:
-            action = action_map.get(id(entry), "restore_as_is")
-            if action == "update_suite":
-                entry["suites"] = [current_codename]
-            elif action == "add_disabled":
-                entry["enabled"] = False
-
-        if writes:
-            payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
-
-            def _write() -> None:
-                result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
-                if result.returncode == 0:
-                    GLib.idle_add(self._after_restore_success, len(writes), missing)
-                else:
-                    GLib.idle_add(self._after_restore_failure, result.stderr.strip(), changed_repos)
-
-            threading.Thread(target=_write, daemon=True).start()
-        else:
-            self._after_restore_success(0, missing)
-
-    def _after_restore_success(self, changed: int, missing: list[dict]) -> bool:
-        if changed:
-            self._on_repos_updated()
-            self._toast_overlay.add_toast(
-                Adw.Toast(
-                    title=f"Restored {changed} {'repository' if changed == 1 else 'repositories'}",
-                    timeout=3,
-                )
-            )
-        if missing:
-            self._show_missing_repos_dialog(missing)
-        elif changed == 0:
-            self._toast_overlay.add_toast(Adw.Toast(title="No changes — system already matches config", timeout=3))
-        return GLib.SOURCE_REMOVE
-
-    def _after_restore_failure(
-        self, message: str, changed_repos: list[tuple[Repository, bool, list[str] | None]]
-    ) -> bool:
-        for live, original_enabled, original_suites in changed_repos:
-            live.enabled = original_enabled
-            if original_suites is not None:
-                live.suites = original_suites
-        for row in self._rows:
-            row.refresh(row.repo)
-        self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to restore: {message}", timeout=5))
-        return GLib.SOURCE_REMOVE
+        wizard.connect("repos-updated", lambda _: self._on_repos_updated())
+        wizard.connect("closing", lambda _: setattr(self, "_restore_wizard", None))
+        self._restore_wizard = wizard
+        wizard.present()
 
     # ------------------------------------------------------------------
     # Missing repos dialog (shared by fast path and cross-machine restore)
@@ -1067,6 +933,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             ("Search repositories", "<Primary>f"),
             ("Open upgrade assistant", "<Primary>u"),
             ("Keyboard shortcuts", "<Primary>F1"),
+            ("Exit", "<Primary>q"),
         ]:
             row = Adw.ActionRow(title=label)
             row.add_suffix(Gtk.ShortcutLabel(accelerator=accel))

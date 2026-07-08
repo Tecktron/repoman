@@ -70,10 +70,12 @@ sudo ln -sf /home/craig/Projects/repoman/polkit-helper /usr/lib/repoman/polkit-h
 
 ```bash
 cd /home/craig/Projects/repoman
-# Kill any existing instance first — second launch silently opens in existing process
-pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
+# Kill ALL repoman instances (installed binary + dev launch) before starting
+pkill -f "repoman" 2>/dev/null; sleep 0.5
 
-PYTHONPATH=/usr/lib/python3/dist-packages:/home/craig/Projects/repoman/src \
+# Dev source MUST come before system dist-packages — otherwise the installed
+# .deb version wins and changes to src/ have no effect.
+PYTHONPATH=/home/craig/Projects/repoman/src:/usr/lib/python3/dist-packages \
 DISPLAY=:0 \
 python3 -m repoman.main
 ```
@@ -82,7 +84,7 @@ python3 -m repoman.main
 
 ```bash
 cd /home/craig/Projects/repoman
-python3 -m pytest tests/ -q          # 134 tests, all must pass
+python3 -m pytest tests/ -q          # 220 tests, all must pass
 ruff check src/                       # linter
 ruff format --check src/              # formatter
 ```
@@ -96,7 +98,7 @@ src/repoman/
   main.py            — RepomanApplication (Adw.Application);
                        startup tool check via check_required_tools()
   models.py          — Repository dataclass, WizardState dataclass,
-                       FileFormat enum, AvailabilityStatus enum
+                       RestoreWizardState dataclass, FileFormat enum, AvailabilityStatus enum
   parser.py          — Parser class: scans sources.list.d/, handles DEB822 (.sources)
                        and one-line (.list); filters official Ubuntu URIs; detects
                        suite-agnostic repos; reads X-Repolib-Name and leading # comments
@@ -149,6 +151,18 @@ src/repoman/
                        changes" relabelled "Done" and closes wizard when _to_apply
                        is empty; icons have set_tooltip_text(); pkexec via
                        subprocess.run(); toast on failure; on_complete on success
+    restore_dialog.py       — RestoreWizardDialog; wraps 3-page restore flow;
+                              accepts saved/actions/codenames/live_repos/on_complete;
+                              same repos-updated + closing signals as RepomanWizardDialog
+    restore_classify_page.py — Step 1: read-only grouped overview of all entries
+                               grouped by action (update_suite/ppa_check/add_disabled/
+                               restore_as_is); skips page 2 if no ppa_check entries
+    restore_check_page.py   — Step 2: per-PPA spinner -> icon availability check via
+                              check_ppa_for_codename(); _checks_started guard;
+                              mutates state.actions[i] on GTK thread; _pending counter
+    restore_confirm_page.py — Step 3: grouped summary (updating/disabled/unchanged);
+                              auth card; polkit write_files apply; rollback on failure;
+                              calls state.on_complete(missing) with pre-adapted entries
 
 polkit-helper        — Privileged write helper (run via pkexec).
                        Actions: enable_repos (patch Suites/Enabled in existing .sources),
@@ -183,6 +197,12 @@ Mutable runtime state: `availability` (default `UNKNOWN`).
 ### `WizardState`
 Threaded through all wizard pages: `candidate_repos`, `target_codename`,
 `selected` (populated in step 1), `on_complete` callback (fires after polkit write).
+
+### `RestoreWizardState`
+Threaded through all restore wizard pages: `saved` (raw dicts from load_config),
+`actions` (parallel list, mutated by page 2 for ppa_check entries),
+`saved_codename`, `current_codename`, `live_repos` (snapshot at wizard-open time),
+`on_complete(missing)` callback (called with pre-adapted missing entries after apply).
 
 ---
 

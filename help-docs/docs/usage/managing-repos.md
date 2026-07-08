@@ -84,6 +84,8 @@ With a repository selected, click **Remove repository…** at the bottom left of
 
 Open **Repos → Remove Multiple…** to open a checklist of all repositories. Check any number, then click **Remove N selected**. One polkit prompt covers all deletions.
 
+Use the **Select disabled** button in the bottom-left corner to automatically check all currently disabled repositories. It never deselects anything, so clicking it multiple times or after manually checking other rows is safe.
+
 ## Signing keys
 
 Every repository row in the detail pane has a **Signing key** section showing the current state:

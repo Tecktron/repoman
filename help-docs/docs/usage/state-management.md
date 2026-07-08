@@ -34,7 +34,7 @@ If any repositories from the file are not found on the system, the
 ### Cross-machine restore
 
 When the file was saved on a machine running a **different Ubuntu release**, repoman
-detects the mismatch and adapts automatically:
+detects the mismatch and opens a **3-page restore wizard**:
 
 | Repository type | Action |
 |-----------------|--------|
@@ -43,20 +43,37 @@ detects the mismatch and adapts automatically:
 | Third-party with older or same-era codename | Suite updated to the current codename |
 | Third-party with newer codename than current | Added as disabled — can't use a future-release repo on an older OS |
 
-While PPA availability is being checked, a toast notification appears. Once all checks
-complete, a **Restore summary dialog** shows exactly what will happen before anything
-is written:
+**Page 1 — Review restore plan**
 
-- **Updating suite to `{codename}`** — repos whose suite will be updated
-- **Adding as disabled** — repos not available for the current release
+All repositories are listed, grouped by what will happen to them:
+
+- **Updating suite to `{codename}`** — non-PPA repos whose suite will be updated
+- **Checking against Launchpad** — PPAs that need a live availability check
+- **Adding as disabled** — repos not usable on the current release
 - **Restoring unchanged** — suite-agnostic repos
 
-Click **Apply** to proceed or **Cancel** to abort with no changes written. One polkit
-prompt covers all matched-repo changes. If missing repositories are then created, a
-separate prompt follows for those.
+![Restore wizard page 1](../assets/screenshots/restore-wizard-classify.png)
 
-After applying matched-repo changes, any repositories not found on the system proceed
-to the missing repositories dialog.
+Click **Next** to proceed.
+
+**Page 2 — Checking PPAs** *(only shown when PPAs are present)*
+
+Each PPA is checked against Launchpad for the current codename. A spinner appears per
+row and is replaced by an icon as each result arrives. The Next button unlocks once all
+checks are complete.
+
+![Restore wizard page 2 — PPAs being checked](../assets/screenshots/restore-wizard-check.png)
+
+**Page 3 — Confirm restore**
+
+A final grouped summary shows all changes. An administrator password prompt is shown
+if anything will be written. Click **Apply changes** to proceed or close the wizard to
+cancel with no changes written.
+
+![Restore wizard page 3](../assets/screenshots/restore-wizard-confirm.png)
+
+One polkit prompt covers all matched-repo changes. After applying, any repositories
+not found on the system proceed to the missing repositories dialog.
 
 ## Missing repositories dialog
 

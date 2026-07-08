@@ -25,6 +25,7 @@ class RepomanApplication(Adw.Application):
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
         self.connect("activate", self._on_activate)
+        self.set_accels_for_action("app.quit", ["<Control>q"])
 
     def _on_activate(self, app: Adw.Application) -> None:
         missing = check_required_tools()

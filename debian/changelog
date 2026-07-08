@@ -1,3 +1,12 @@
+repoman (0.2.0-1) noble; urgency=low
+
+  * Cross-machine restore wizard: replace flat summary dialog with a 3-page wizard
+    (classify, check PPAs with live spinners, confirm + apply).
+  * Add Exit menu item to Tools menu with Ctrl+Q keyboard shortcut.
+  * Add "Select disabled" button to Remove Multiple Repos dialog.
+
+ -- Tecktron Studios <software@tecktron.net>  Tue, 08 Jul 2026 00:00:00 +0000
+
 repoman (0.1.7-1) noble; urgency=low
 
   * Cross-machine restore: .repoman v2 format bundles GPG keys and saved_codename;

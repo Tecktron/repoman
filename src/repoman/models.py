@@ -96,3 +96,15 @@ class WizardState:
     target_codename: str
     selected: list[Repository] = field(default_factory=list)
     on_complete: Callable[[], None] | None = None
+
+
+@dataclass
+class RestoreWizardState:
+    """Shared state threaded through all restore wizard pages."""
+
+    saved: list[dict]
+    actions: list[str]
+    saved_codename: str
+    current_codename: str
+    live_repos: list[Repository]
+    on_complete: Callable[[list[dict]], None] | None = None

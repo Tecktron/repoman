@@ -2,6 +2,20 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.2.0 — 2026-07-08
+
+### Added
+
+- **Restore wizard**: cross-machine restore now uses a 3-page wizard (classify, check PPAs,
+  confirm + apply) instead of a flat dialog. Shows per-PPA spinners with live results,
+  grouped summaries, and a familiar wizard-style flow consistent with the upgrade assistant.
+- **Exit menu item**: **Tools → Exit** closes the application immediately. Keyboard shortcut: `Ctrl+Q`.
+- **Select disabled button**: the Remove Multiple Repos dialog now has a **Select disabled** button
+  in the bottom-left corner that automatically checks all currently disabled repositories. It never
+  deselects anything, so it is safe to click multiple times or after manually selecting other rows.
+
+---
+
 ## 0.1.7 — 2026-07-08
 
 ### Added
