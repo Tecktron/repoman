@@ -380,40 +380,62 @@ release it was last (or most recently) published for:
 
 ## Save / Load state (`.repoman` files)
 
-**Tools → State Management → Save… / Load…**
+**Repos → Save state… / Load state…** (no submenu — flat items in the Repos menu).
 
-Save serialises `self._repos` to a JSON `.repoman` file (no polkit — written directly
-to wherever the user chooses via `Gtk.FileDialog`). Default filename: `state-{date}.repoman`.
+Save calls `config_io.save_config(repos, current_codename)` → JSON string written
+directly to wherever the user picks via `Gtk.FileDialog` (no polkit). Default filename:
+`state-{date}.repoman`. GPG key file bytes are read and embedded as base64
+(`signed_by_content_b64`) when the key path is readable.
 
-Load matches saved entries to live repos **by `uris[0]`** (stable across upgrades).
-Three outcomes per entry:
-- URI found, state differs → write via polkit `write_files`
+### Load — same-machine fast path
+
+Triggered when `saved_codename` is absent (v1 file) or matches `get_current_codename()`.
+Matches saved entries to live repos by `uris[0]`. Three outcomes per entry:
+- URI found, enabled state differs → write via polkit `write_files`
 - URI found, state same → no-op
-- URI not found → "missing" list
+- URI not found → "missing" list (see below)
 
-After polkit write succeeds, any missing repos are presented in an `Adw.AlertDialog`
-with three choices: Skip / Add N enabled / Add all N. "Create" fires another polkit
-`write_files` call. GPG/Signed-By warning shown in the dialog if any missing repo has
-a `signed_by` field.
+### Load — cross-machine restore
 
-Polkit failure rolls back in-memory `enabled` state before refreshing rows.
+Triggered when `saved_codename` is set and differs from `get_current_codename()`.
+Steps:
+1. `classify_restore_entry()` in `config_io.py` assigns each entry one of:
+   `restore_as_is` / `update_suite` / `add_disabled` / `ppa_check`
+2. PPA entries get a HEAD check via `check_ppa_for_codename()` (background thread;
+   toast shown during check). Result resolves to `update_suite` or `add_disabled`.
+3. Summary `Gtk.Window` shows categorised changes; user clicks Cancel or Apply.
+4. Apply: matched repos' suites/enabled mutated and written via one polkit `write_files`.
+   On failure, in-memory state rolls back (`enabled` + `suites`).
+5. Missing entries pre-adapted (suite / enabled) then passed to the missing repos dialog.
+
+### Missing repos dialog (`Gtk.Window`, not `Adw.AlertDialog`)
+
+Three choices: Skip / Add N enabled / Add all N. Creates repos via polkit `write_files`.
+Key files with `signed_by_content_b64` are written in the same polkit call (no manual
+key install needed). Warning only shown for repos whose key is not bundled.
+
 Repos on the system but absent from the file are left untouched.
 
-**File format (version 1):**
+**File format (version 2):**
 ```json
 {
-  "version": 1,
-  "saved_at": "2026-06-23T22:00:00",
+  "version": 2,
+  "saved_at": "2026-07-08T14:22:00",
+  "saved_codename": "noble",
   "repos": [
     {"types": ["deb"], "uris": ["https://..."], "suites": ["noble"],
      "components": ["main"], "enabled": true,
-     "description": "...", "signed_by": "/path/to.gpg",
+     "description": "...", "signed_by": "/usr/share/keyrings/example.gpg",
+     "signed_by_content_b64": "<base64>",
      "source_file": "/etc/apt/sources.list.d/example.sources"}
   ]
 }
 ```
 
-`config_io.py` is pure (no GTK) with 24 unit tests in `tests/test_config_io.py`.
+Version 1 files (no `saved_codename`, no `signed_by_content_b64`) still load via the
+fast path with reduced capability.
+
+`config_io.py` is pure (no GTK) with 48 unit tests in `tests/test_config_io.py`.
 
 ---
 
@@ -423,7 +445,7 @@ Repos on the system but absent from the file are left untouched.
   then jumps). Fix: pre-realize positioning with `get_default_size()`. Deferred.
 - **`.list` → `.sources` conversion**: converter.py is written; detail_pane.py
   save path triggers it correctly. Not yet exercised in a real-world test.
-- **Distribution**: PPA at `ppa:tecktron-studios/repoman` not yet created.
+- **Distribution**: PPA at `ppa:tecktron-studios/repoman` published; noble, questing, resolute.
 
 ---
 

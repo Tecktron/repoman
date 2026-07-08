@@ -44,6 +44,7 @@ nav:
   - Usage:
     - Managing Repositories: usage/managing-repos.md
     - Upgrade Workflow: usage/upgrade-workflow.md
+    - State Management: usage/state-management.md
     - Annotations: usage/annotations.md
   - Reference:
     - Configuration: reference/config.md

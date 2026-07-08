@@ -47,3 +47,4 @@ The `?` icon is the default before any availability check runs. The wizard runs 
 
 - [Upgrade workflow](usage/upgrade-workflow.md) — walk through the wizard after an Ubuntu upgrade
 - [Managing repositories](usage/managing-repos.md) — add, remove, edit, and annotate repos
+- [State management](usage/state-management.md) — save your repo config and restore it on a new machine or after a reinstall

@@ -74,7 +74,7 @@ repoman catches both — and it doesn't stop there. Between upgrades it's a full
 
     ---
 
-    Export your full repo list to a `.repoman` snapshot file. Load it on any machine to restore enabled states, create missing repos, and migrate your setup after a reinstall.
+    Export your full repo list — including GPG keys — to a self-contained `.repoman` file. Load it on any machine: repoman adapts suites to the target Ubuntu release, verifies PPAs against Launchpad, and installs keys automatically.
 
 -   :material-note-edit-outline: __Annotations that survive upgrades__
 

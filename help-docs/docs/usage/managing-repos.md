@@ -121,6 +121,12 @@ Click **Edit** to open the key editor in edit mode.
 
 Re-enable them individually from the detail pane, or use the upgrade wizard after the upgrade completes.
 
+## Saving and restoring your configuration
+
+**Repos → Save state…** exports all repositories to a `.repoman` file. **Repos → Load state…** restores them — on the same machine or a different one. When loading on a different Ubuntu release, repoman adapts suites automatically and bundles GPG keys so no manual key installation is needed.
+
+See [State Management](state-management.md) for the full workflow.
+
 ## Updating packages
 
 Use **Tools → Software Updater** (or press `Ctrl+R`) to open Ubuntu's Software Updater, which handles `apt update` and package upgrades. If Software Updater is not installed, the menu item and shortcut are inactive.

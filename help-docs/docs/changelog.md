@@ -2,6 +2,23 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 0.1.7 — 2026-07-08
+
+### Added
+
+- **Cross-machine restore**: loading a `.repoman` file saved on a different Ubuntu
+  release now adapts repository suites automatically. PPAs are checked against
+  Launchpad; third-party repos with older codenames are updated to the current release;
+  repos that use a newer codename than the current OS are added as disabled. A summary
+  dialog shows exactly what will change before anything is written.
+- **Bundled GPG keys**: `.repoman` files (format v2) now embed signing key bytes as
+  base64. On restore, keys are written to their original paths via polkit — no manual
+  key installation needed. Version 1 files continue to work with the old behaviour.
+- **State Management help page**: new documentation covering save, load, cross-machine
+  restore, and the `.repoman` file format.
+
+---
+
 ## 0.1.6 — 2026-07-07
 
 ### Fixed

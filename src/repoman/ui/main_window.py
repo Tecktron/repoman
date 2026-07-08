@@ -17,14 +17,15 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk, Pango
 
 from .. import __version__, config_io
 from ..checker import get_network_error, reset_network_state
-from ..models import Repository
+from ..models import AvailabilityStatus, Repository
 from ..parser import Parser
 from ..paths import GDEBI, PKEXEC, POLKIT_HELPER, SOFTWARE_PROPERTIES, UPDATE_MANAGER
-from ..utils import repos_needing_attention
+from ..upgrade_info import check_ppa_for_codename, get_all_known_codenames
+from ..utils import get_current_codename, repos_needing_attention
 from ..writer import repo_to_deb822
 from .detail_pane import DetailPane
 from .position import center_on_parent, center_on_screen
@@ -674,7 +675,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         if path.suffix != ".repoman":
             path = path.with_suffix(".repoman")
         try:
-            path.write_text(config_io.save_config(self._repos), encoding="utf-8")
+            path.write_text(config_io.save_config(self._repos, get_current_codename()), encoding="utf-8")
             self._toast_overlay.add_toast(Adw.Toast(title=f"Config saved to {path.name}", timeout=3))
         except OSError as exc:
             self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to save config: {exc}", timeout=5))
@@ -697,13 +698,26 @@ class RepomanWindow(Gtk.ApplicationWindow):
             return
         path = Path(gfile.get_path())
         try:
-            saved = config_io.load_config(path)
+            saved, saved_codename = config_io.load_config(path)
         except (json.JSONDecodeError, ValueError, OSError, KeyError) as exc:
             self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to read config: {exc}", timeout=5))
             return
-        self._apply_config_load(saved)
+        self._apply_config_load(saved, saved_codename)
 
-    def _apply_config_load(self, saved: list[dict]) -> None:
+    def _apply_config_load(self, saved: list[dict], saved_codename: str | None) -> None:
+        current_codename = get_current_codename()
+        is_cross_machine = bool(saved_codename) and saved_codename != current_codename
+
+        if is_cross_machine:
+            self._apply_config_load_cross_machine(saved, saved_codename, current_codename)
+        else:
+            self._apply_config_load_fast(saved)
+
+    # ------------------------------------------------------------------
+    # Same-machine (fast) path
+    # ------------------------------------------------------------------
+
+    def _apply_config_load_fast(self, saved: list[dict]) -> None:
         matched, missing = config_io.match_repos(saved, self._repos)
 
         writes = []
@@ -752,17 +766,197 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to apply config: {message}", timeout=5))
         return GLib.SOURCE_REMOVE
 
+    # ------------------------------------------------------------------
+    # Cross-machine restore path
+    # ------------------------------------------------------------------
+
+    def _apply_config_load_cross_machine(self, saved: list[dict], saved_codename: str, current_codename: str) -> None:
+        all_known = get_all_known_codenames()
+        actions = [
+            config_io.classify_restore_entry(entry, saved_codename, current_codename, all_known) for entry in saved
+        ]
+
+        ppa_indices = [i for i, a in enumerate(actions) if a == "ppa_check"]
+        if not ppa_indices:
+            self._show_restore_summary_dialog(saved, actions, current_codename)
+            return
+
+        check_toast = Adw.Toast(title=f"Checking {len(ppa_indices)} PPA(s) for {current_codename}…", timeout=0)
+        self._toast_overlay.add_toast(check_toast)
+
+        def _check_ppas() -> None:
+            for i in ppa_indices:
+                entry = saved[i]
+                repo = config_io.entry_to_repository(entry)
+                if repo.ppa_owner and repo.ppa_name:
+                    status, _ = check_ppa_for_codename(repo.ppa_owner, repo.ppa_name, current_codename)
+                    actions[i] = "update_suite" if status == AvailabilityStatus.AVAILABLE else "add_disabled"
+                else:
+                    actions[i] = "add_disabled"
+            GLib.idle_add(_on_done)
+
+        def _on_done() -> bool:
+            check_toast.dismiss()
+            self._show_restore_summary_dialog(saved, actions, current_codename)
+            return GLib.SOURCE_REMOVE
+
+        threading.Thread(target=_check_ppas, daemon=True).start()
+
+    def _show_restore_summary_dialog(self, saved: list[dict], actions: list[str], current_codename: str) -> None:
+        def _display(entry: dict) -> str:
+            return entry.get("description") or (entry.get("uris") or [""])[0]
+
+        update_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "update_suite"]
+        disabled_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "add_disabled"]
+        unchanged_entries = [(e, a) for e, a in zip(saved, actions, strict=True) if a == "restore_as_is"]
+
+        dlg = Gtk.Window(
+            title=f"Restore to {current_codename}",
+            transient_for=self,
+            modal=True,
+            resizable=False,
+            default_width=440,
+        )
+        dlg.set_icon_name("io.github.Tecktron.repoman")
+
+        outer = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12,
+            margin_top=18,
+            margin_bottom=18,
+            margin_start=18,
+            margin_end=18,
+        )
+
+        def _add_group(title: str, entries: list) -> None:
+            if not entries:
+                return
+            header = Gtk.Label(label=f"<b>{title}</b>", use_markup=True, xalign=0, margin_top=6)
+            outer.append(header)
+            for entry, _ in entries:
+                lbl = Gtk.Label(
+                    label=f"  • {_display(entry)}",
+                    xalign=0,
+                    ellipsize=Pango.EllipsizeMode.END,
+                    max_width_chars=52,
+                )
+                outer.append(lbl)
+
+        _add_group(f"Updating suite to {current_codename}", update_entries)
+        _add_group("Adding as disabled (not available)", disabled_entries)
+        _add_group("Restoring unchanged", unchanged_entries)
+
+        btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dlg.close())
+        btn_row.append(cancel_btn)
+        apply_btn = Gtk.Button(label="Apply")
+        apply_btn.add_css_class("suggested-action")
+        apply_btn.connect(
+            "clicked",
+            lambda _: (dlg.close(), self._apply_restore(saved, actions, current_codename)),
+        )
+        btn_row.append(apply_btn)
+        outer.append(btn_row)
+
+        dlg.set_child(outer)
+        center_on_parent(dlg)
+        dlg.present()
+
+    def _apply_restore(self, saved: list[dict], actions: list[str], current_codename: str) -> None:
+        matched, missing = config_io.match_repos(saved, self._repos)
+        action_map = {id(e): a for e, a in zip(saved, actions, strict=True)}
+
+        writes = []
+        changed_repos: list[tuple[Repository, bool, list[str]]] = []
+
+        for entry, live in matched:
+            action = action_map.get(id(entry), "restore_as_is")
+            original_enabled = live.enabled
+            original_suites = list(live.suites) if action == "update_suite" else None
+            changed = False
+
+            if action == "update_suite":
+                live.suites = [current_codename]
+                live.enabled = entry.get("enabled", live.enabled)
+                changed = True
+            elif action == "add_disabled":
+                live.enabled = False
+                changed = True
+            elif action == "restore_as_is":
+                if entry.get("enabled") != live.enabled:
+                    live.enabled = entry["enabled"]
+                    changed = True
+
+            if changed:
+                writes.append({"path": str(live.source_file), "content": repo_to_deb822(live)})
+                changed_repos.append((live, original_enabled, original_suites))
+
+        # Pre-adapt missing entries
+        for entry in missing:
+            action = action_map.get(id(entry), "restore_as_is")
+            if action == "update_suite":
+                entry["suites"] = [current_codename]
+            elif action == "add_disabled":
+                entry["enabled"] = False
+
+        if writes:
+            payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
+
+            def _write() -> None:
+                result = subprocess.run([PKEXEC, POLKIT_HELPER], input=payload, capture_output=True, text=True)
+                if result.returncode == 0:
+                    GLib.idle_add(self._after_restore_success, len(writes), missing)
+                else:
+                    GLib.idle_add(self._after_restore_failure, result.stderr.strip(), changed_repos)
+
+            threading.Thread(target=_write, daemon=True).start()
+        else:
+            self._after_restore_success(0, missing)
+
+    def _after_restore_success(self, changed: int, missing: list[dict]) -> bool:
+        if changed:
+            self._on_repos_updated()
+            self._toast_overlay.add_toast(
+                Adw.Toast(
+                    title=f"Restored {changed} {'repository' if changed == 1 else 'repositories'}",
+                    timeout=3,
+                )
+            )
+        if missing:
+            self._show_missing_repos_dialog(missing)
+        elif changed == 0:
+            self._toast_overlay.add_toast(Adw.Toast(title="No changes — system already matches config", timeout=3))
+        return GLib.SOURCE_REMOVE
+
+    def _after_restore_failure(
+        self, message: str, changed_repos: list[tuple[Repository, bool, list[str] | None]]
+    ) -> bool:
+        for live, original_enabled, original_suites in changed_repos:
+            live.enabled = original_enabled
+            if original_suites is not None:
+                live.suites = original_suites
+        for row in self._rows:
+            row.refresh(row.repo)
+        self._toast_overlay.add_toast(Adw.Toast(title=f"Failed to restore: {message}", timeout=5))
+        return GLib.SOURCE_REMOVE
+
+    # ------------------------------------------------------------------
+    # Missing repos dialog (shared by fast path and cross-machine restore)
+    # ------------------------------------------------------------------
+
     def _show_missing_repos_dialog(self, missing: list[dict]) -> None:
         n = len(missing)
         enabled_count = sum(1 for m in missing if m.get("enabled", True))
-        has_signed_by = any(m.get("signed_by") for m in missing)
+        # Only warn about keys that aren't bundled in the file
+        needs_manual_key = [m for m in missing if m.get("signed_by") and not m.get("signed_by_content_b64")]
 
         body = (
             f"{n} {'repository' if n == 1 else 'repositories'} from the config "
             f"{'was' if n == 1 else 'were'} not found on this system."
         )
-        if has_signed_by:
-            paths = sorted({m["signed_by"] for m in missing if m.get("signed_by")})
+        if needs_manual_key:
+            paths = sorted({m["signed_by"] for m in needs_manual_key})
             path_list = "\n".join(f"  • {p}" for p in paths)
             body += (
                 f"\n\nThe following GPG keyring files will be needed:\n{path_list}"
@@ -812,6 +1006,15 @@ class RepomanWindow(Gtk.ApplicationWindow):
         writes = []
         for e in to_create:
             repo = config_io.entry_to_repository(e)
+            # Write bundled GPG key file before the .sources file
+            if e.get("signed_by_content_b64") and repo.signed_by and repo.signed_by.startswith("/"):
+                writes.append(
+                    {
+                        "path": repo.signed_by,
+                        "content": e["signed_by_content_b64"],
+                        "encoding": "base64",
+                    }
+                )
             writes.append({"path": str(repo.source_file), "content": repo_to_deb822(repo)})
         payload = json.dumps({"action": "write_files", "writes": writes, "deletes": []})
 

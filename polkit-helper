@@ -16,6 +16,7 @@ from debian.deb822 import Deb822
 
 _ALLOWED = frozenset([
     Path("/etc/apt/sources.list.d"),
+    Path("/etc/apt/keyrings"),
     Path("/etc/update-manager/release-upgrades.d"),
     Path("/usr/share/keyrings"),
 ])
@@ -82,6 +83,7 @@ def _apply_write_files(payload: dict) -> None:
         content = entry["content"]
         encoding = entry.get("encoding", "text")
 
+        path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
         if encoding == "base64":
             tmp.write_bytes(base64.b64decode(content))

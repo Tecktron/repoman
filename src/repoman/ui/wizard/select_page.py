@@ -73,7 +73,7 @@ class SelectReposPage(RepomanWizardPage):
             return
         path = Path(gfile.get_path())
         try:
-            saved = config_io.load_config(path)
+            saved, _ = config_io.load_config(path)
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
             dlg = Gtk.Window(
                 title="Could not load file",

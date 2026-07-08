@@ -4,8 +4,6 @@
 
 A GTK4 + libadwaita graphical tool for managing third-party APT repositories on Ubuntu and Xubuntu. After a release upgrade, repoman checks which of your PPAs and custom repositories are available for the new codename, updates their `Suites:` fields in one authenticated step, and flags anything that needs attention.
 
-> The name is a nod to the 1984 film.
-
 ---
 
 ## Features

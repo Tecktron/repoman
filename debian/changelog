@@ -1,3 +1,13 @@
+repoman (0.1.7-1) noble; urgency=low
+
+  * Cross-machine restore: .repoman v2 format bundles GPG keys and saved_codename;
+    load adapts suites automatically with PPA availability checks and summary dialog.
+  * Polkit helper: create parent directories before writing key files.
+  * Add /etc/apt/keyrings/ to polkit allowed paths.
+  * State Management documentation page added.
+
+ -- Tecktron Studios <software@tecktron.net>  Tue, 08 Jul 2026 00:00:00 +0000
+
 repoman (0.1.6-1) noble; urgency=low
 
   * Fix About dialog showing stale version; single-source from repoman.__version__.
