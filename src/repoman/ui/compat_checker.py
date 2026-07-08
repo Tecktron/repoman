@@ -18,7 +18,7 @@ from ..upgrade_info import (
     get_upgrade_targets,
 )
 from .position import center_on_parent
-from .wizard.popover import _clear_label_selections
+from .wizard.popover import _clear_label_selections, make_info_button
 
 
 class CompatCheckerWindow(Gtk.Window):
@@ -224,11 +224,23 @@ class CompatCheckerWindow(Gtk.Window):
 
         if self._agnostic_repos:
             agnostic_group = Adw.PreferencesGroup(
-                title=f"Suite-agnostic — always compatible ({len(self._agnostic_repos)})",
+                title=f"Suite-agnostic - always compatible ({len(self._agnostic_repos)})",
             )
             for repo in self._agnostic_repos:
                 row = self._make_repo_row(repo)
-                row.add_suffix(Gtk.Image.new_from_icon_name(AVAILABILITY_ICONS[AvailabilityStatus.SUITE_AGNOSTIC][0]))
+                icon_name, css = AVAILABILITY_ICONS[AvailabilityStatus.SUITE_AGNOSTIC]
+                row.add_suffix(
+                    make_info_button(
+                        icon_name,
+                        css,
+                        "Suite-agnostic - always compatible",
+                        headline="Suite-agnostic - always compatible",
+                        suites=repo.suites,
+                        target_label=f"Checking for: {target_codename}",
+                        ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+                        ppa_name=repo.ppa_name if repo.is_ppa else None,
+                    )
+                )
                 agnostic_group.add(row)
             self._results_box.append(agnostic_group)
 
@@ -239,7 +251,16 @@ class CompatCheckerWindow(Gtk.Window):
             )
             for repo in self._other_repos:
                 row = self._make_repo_row(repo)
-                row.add_suffix(Gtk.Image.new_from_icon_name("dialog-question-symbolic"))
+                row.add_suffix(
+                    make_info_button(
+                        "dialog-question-symbolic",
+                        "",
+                        "Manual check recommended",
+                        headline="No automatic check available",
+                        suites=repo.suites,
+                        target_label=f"Checking for: {target_codename}",
+                    )
+                )
                 other_group.add(row)
             self._results_box.append(other_group)
 
@@ -309,6 +330,11 @@ class CompatCheckerWindow(Gtk.Window):
         """Clickable status icon that opens a detail popover."""
         icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
 
+        tooltip = {
+            AvailabilityStatus.AVAILABLE: f"Available for {target_codename}",
+            AvailabilityStatus.UNAVAILABLE: f"Not yet available for {target_codename}",
+        }.get(status, error or "Could not determine availability")
+
         icon = Gtk.Image.new_from_icon_name(icon_name)
         if css:
             icon.add_css_class(css)
@@ -317,6 +343,7 @@ class CompatCheckerWindow(Gtk.Window):
         btn.set_child(icon)
         btn.add_css_class("flat")
         btn.add_css_class("circular")
+        btn.set_tooltip_text(tooltip)
 
         content = self._make_popover_content(repo, status, error, target_codename, suites)
         popover = Gtk.Popover(child=content)
