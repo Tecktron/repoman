@@ -4,6 +4,8 @@ repoman (0.2.0-1) noble; urgency=low
     (classify, check PPAs with live spinners, confirm + apply).
   * Add Exit menu item to Tools menu with Ctrl+Q keyboard shortcut.
   * Add "Select disabled" button to Remove Multiple Repos dialog.
+  * Add info popovers to all wizard pages (click any status icon for suite/target/Launchpad details).
+  * Fix broken icon names (emblem-ok-symbolic, emblem-synchronizing-symbolic) on Xubuntu.
 
  -- Tecktron Studios <software@tecktron.net>  Tue, 08 Jul 2026 00:00:00 +0000
 

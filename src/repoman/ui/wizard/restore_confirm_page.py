@@ -17,6 +17,7 @@ from ...models import Repository, RestoreWizardState
 from ...paths import PKEXEC, POLKIT_HELPER
 from ...writer import repo_to_deb822
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class RestoreConfirmPage(RepomanWizardPage):
@@ -108,14 +109,24 @@ class RestoreConfirmPage(RepomanWizardPage):
             uri = (entry.get("uris") or [""])[0]
             return name or uri, uri if name else ""
 
-        def _make_row(entry: dict, icon_name: str, css: str, tooltip: str) -> Adw.ActionRow:
+        def _make_row(
+            entry: dict, icon_name: str, css: str, tooltip: str, *, headline: str, target_label: str | None
+        ) -> Adw.ActionRow:
             name, subtitle = _display(entry)
             row = Adw.ActionRow(title=name, subtitle=subtitle)
-            icon = Gtk.Image.new_from_icon_name(icon_name)
-            if css:
-                icon.add_css_class(css)
-            icon.set_tooltip_text(tooltip)
-            row.add_suffix(icon)
+            repo = config_io.entry_to_repository(entry)
+            row.add_suffix(
+                make_info_button(
+                    icon_name,
+                    css,
+                    tooltip,
+                    headline=headline,
+                    suites=entry.get("suites") or [],
+                    target_label=target_label,
+                    ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+                    ppa_name=repo.ppa_name if repo.is_ppa else None,
+                )
+            )
             return row
 
         if self._has_changes:
@@ -124,6 +135,7 @@ class RestoreConfirmPage(RepomanWizardPage):
             lock_icon = Gtk.Image.new_from_icon_name("dialog-password-symbolic")
             lock_icon.set_icon_size(Gtk.IconSize.LARGE)
             lock_icon.add_css_class("accent")
+            lock_icon.set_tooltip_text("Requires administrator password")
             lock_icon.set_margin_start(12)
             auth_card.append(lock_icon)
             text = Gtk.Box(
@@ -154,22 +166,49 @@ class RestoreConfirmPage(RepomanWizardPage):
                 description="Suite field updated and repo enabled",
             )
             for entry in update_entries:
-                group.add(_make_row(entry, "emblem-ok-symbolic", "success", f"Suite updated to {cc}"))
+                group.add(
+                    _make_row(
+                        entry,
+                        "pamac-tray-no-update",
+                        "success",
+                        f"Suite updated to {cc}",
+                        headline=f"Suite updated to {cc}",
+                        target_label=f"Target: {cc}",
+                    )
+                )
             self._content_box.append(group)
 
         if disabled_entries:
             group = Adw.PreferencesGroup(
                 title="Adding as disabled",
-                description=f"Not available for {cc} — added with Enabled: no",
+                description=f"Not available for {cc} - added with Enabled: no",
             )
             for entry in disabled_entries:
-                group.add(_make_row(entry, "dialog-warning-symbolic", "warning", f"Not available for {cc}"))
+                group.add(
+                    _make_row(
+                        entry,
+                        "dialog-warning-symbolic",
+                        "warning",
+                        f"Not available for {cc}",
+                        headline=f"Not available for {cc} - added as disabled",
+                        target_label=f"Target: {cc}",
+                    )
+                )
             self._content_box.append(group)
 
         if unchanged_entries:
             group = Adw.PreferencesGroup(title="Restoring unchanged")
             for entry in unchanged_entries:
-                group.add(_make_row(entry, "emblem-ok-symbolic", "success", "Restored as-is"))
+                group.add(
+                    _make_row(
+                        entry,
+                        "locked-symbolic",
+                        "",
+                        "Restored as-is",
+                        headline="Restored unchanged",
+                        target_label=None,
+                    )
+                )
             self._content_box.append(group)
 
     def _apply(self) -> None:

@@ -12,6 +12,7 @@ from gi.repository import Adw, GLib, Gtk
 from ...checker import Checker, get_network_error, reset_network_state
 from ...models import AVAILABILITY_ICONS, AvailabilityStatus, Repository, WizardState
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class CheckAvailabilityPage(RepomanWizardPage):
@@ -88,16 +89,23 @@ class CheckAvailabilityPage(RepomanWizardPage):
             return GLib.SOURCE_REMOVE
         row.remove(spinner)
         icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
-        icon = Gtk.Image.new_from_icon_name(icon_name)
-        if css:
-            icon.add_css_class(css)
         tooltip = {
-            AvailabilityStatus.AVAILABLE: f"Available for {self._state.target_codename} — will be re-enabled",
-            AvailabilityStatus.UNAVAILABLE: f"Not available for {self._state.target_codename} — will be skipped",
-            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic — no codename update needed, will be re-enabled",
-        }.get(status, "Could not check — network error")
-        icon.set_tooltip_text(tooltip)
-        row.add_suffix(icon)
+            AvailabilityStatus.AVAILABLE: f"Available for {self._state.target_codename} - will be re-enabled",
+            AvailabilityStatus.UNAVAILABLE: f"Not available for {self._state.target_codename} - will be skipped",
+            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic - no codename update needed, will be re-enabled",
+        }.get(status, "Could not check - network error")
+        row.add_suffix(
+            make_info_button(
+                icon_name,
+                css,
+                tooltip,
+                headline=tooltip,
+                suites=repo.suites,
+                target_label=f"Checking for: {self._state.target_codename}",
+                ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+                ppa_name=repo.ppa_name if repo.is_ppa else None,
+            )
+        )
         self._pending -= 1
         if self._pending == 0:
             available = sum(1 for r in self._state.selected if r.availability == AvailabilityStatus.AVAILABLE)
@@ -108,7 +116,7 @@ class CheckAvailabilityPage(RepomanWizardPage):
             if err:
                 self._content_box.append(
                     Gtk.Label(
-                        label=f"Network error — some results may be incomplete: {err}",
+                        label=f"Network error - some results may be incomplete: {err}",
                         wrap=True,
                         xalign=0,
                         css_classes=["warning"],

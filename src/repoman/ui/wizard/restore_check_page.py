@@ -15,6 +15,7 @@ from ... import config_io
 from ...models import AVAILABILITY_ICONS, AvailabilityStatus, RestoreWizardState
 from ...upgrade_info import check_ppa_for_codename
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class RestoreCheckPpasPage(RepomanWizardPage):
@@ -37,7 +38,7 @@ class RestoreCheckPpasPage(RepomanWizardPage):
         )
         state_typed: RestoreWizardState = self._state
         self._ppa_indices = [i for i, a in enumerate(state_typed.actions) if a == "ppa_check"]
-        self._row_widgets: dict[int, tuple[Adw.ActionRow, Gtk.Spinner]] = {}
+        self._row_widgets: dict[int, tuple[Adw.ActionRow, Gtk.Spinner, list[str], str | None, str | None]] = {}
         self._pending = len(self._ppa_indices)
         self._checks_started = False
         self._next_button.set_sensitive(False)
@@ -74,7 +75,8 @@ class RestoreCheckPpasPage(RepomanWizardPage):
             spinner = Gtk.Spinner(spinning=True)
             row.add_suffix(spinner)
             self._group.add(row)
-            self._row_widgets[idx] = (row, spinner)
+            repo = config_io.entry_to_repository(entry)
+            self._row_widgets[idx] = (row, spinner, entry.get("suites") or [], repo.ppa_owner, repo.ppa_name)
 
     def _run_checks(self) -> None:
         state: RestoreWizardState = self._state
@@ -95,20 +97,27 @@ class RestoreCheckPpasPage(RepomanWizardPage):
 
     def _on_row_checked(self, idx: int, status: AvailabilityStatus) -> bool:
         state: RestoreWizardState = self._state
-        row, spinner = self._row_widgets.get(idx, (None, None))
+        row, spinner, suites, ppa_owner, ppa_name = self._row_widgets.get(idx, (None, None, [], None, None))
         if row is not None:
             row.remove(spinner)
             icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
-            icon = Gtk.Image.new_from_icon_name(icon_name)
-            if css:
-                icon.add_css_class(css)
             cc = state.current_codename
             tooltip = {
-                AvailabilityStatus.AVAILABLE: f"Available for {cc} — suite will be updated",
-                AvailabilityStatus.UNAVAILABLE: f"Not available for {cc} — will be added as disabled",
-            }.get(status, "Could not check — network error")
-            icon.set_tooltip_text(tooltip)
-            row.add_suffix(icon)
+                AvailabilityStatus.AVAILABLE: f"Available for {cc} - suite will be updated",
+                AvailabilityStatus.UNAVAILABLE: f"Not available for {cc} - will be added as disabled",
+            }.get(status, "Could not check - network error")
+            row.add_suffix(
+                make_info_button(
+                    icon_name,
+                    css,
+                    tooltip,
+                    headline=tooltip,
+                    suites=suites,
+                    target_label=f"Checking for: {state.current_codename}",
+                    ppa_owner=ppa_owner,
+                    ppa_name=ppa_name,
+                )
+            )
 
         # Mutate actions on the GTK thread
         state.actions[idx] = "update_suite" if status == AvailabilityStatus.AVAILABLE else "add_disabled"

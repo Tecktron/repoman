@@ -25,6 +25,9 @@ class RepomanApplication(Adw.Application):
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
         self.connect("activate", self._on_activate)
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda *_: self.quit())
+        self.add_action(quit_action)
         self.set_accels_for_action("app.quit", ["<Control>q"])
 
     def _on_activate(self, app: Adw.Application) -> None:

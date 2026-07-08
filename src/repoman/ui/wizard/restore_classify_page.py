@@ -8,8 +8,10 @@ gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
 from gi.repository import Adw
 
+from ... import config_io
 from ...models import RestoreWizardState
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class RestoreClassifyPage(RepomanWizardPage):
@@ -64,13 +66,33 @@ class RestoreClassifyPage(RepomanWizardPage):
             uri = (entry.get("uris") or [""])[0]
             return name or uri, uri if name else ""
 
-        def _add_group(title: str, entries: list[dict]) -> None:
+        def _add_group(
+            title: str,
+            entries: list[dict],
+            icon_name: str,
+            css: str,
+            tooltip: str,
+            target_label: str | None,
+        ) -> None:
             if not entries:
                 return
             group = Adw.PreferencesGroup(title=title)
             for entry in entries:
                 name, subtitle = _display(entry)
                 row = Adw.ActionRow(title=name, subtitle=subtitle)
+                repo = config_io.entry_to_repository(entry)
+                row.add_suffix(
+                    make_info_button(
+                        icon_name,
+                        css,
+                        tooltip,
+                        headline=tooltip,
+                        suites=entry.get("suites") or [],
+                        target_label=target_label,
+                        ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+                        ppa_name=repo.ppa_name if repo.is_ppa else None,
+                    )
+                )
                 group.add(row)
             self._content_box.append(group)
 
@@ -79,7 +101,35 @@ class RestoreClassifyPage(RepomanWizardPage):
         disabled_entries = [e for e, a in zip(saved, actions, strict=True) if a == "add_disabled"]
         unchanged_entries = [e for e, a in zip(saved, actions, strict=True) if a == "restore_as_is"]
 
-        _add_group(f"Updating suite to {cc}", update_entries)
-        _add_group("Checking against Launchpad", ppa_entries)
-        _add_group("Adding as disabled", disabled_entries)
-        _add_group("Restoring unchanged", unchanged_entries)
+        _add_group(
+            f"Updating suite to {cc}",
+            update_entries,
+            "pamac-tray-no-update",
+            "success",
+            f"Suite will be updated to {cc}",
+            f"Target: {cc}",
+        )
+        _add_group(
+            "Checking against Launchpad",
+            ppa_entries,
+            "dialog-question-symbolic",
+            "",
+            "Will be checked against Launchpad in Step 2",
+            f"Target: {cc}",
+        )
+        _add_group(
+            "Adding as disabled",
+            disabled_entries,
+            "dialog-warning-symbolic",
+            "warning",
+            "Will be added as disabled",
+            f"Target: {cc}",
+        )
+        _add_group(
+            "Restoring unchanged",
+            unchanged_entries,
+            "locked-symbolic",
+            "",
+            "Will be restored unchanged",
+            None,
+        )

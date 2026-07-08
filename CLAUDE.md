@@ -111,8 +111,8 @@ src/repoman/
                        check_ppa_for_codename() (InRelease HEAD)
   utils.py           — get_current_codename() via lsb_release; repos_needing_attention()
   paths.py           — shutil.which() for pkexec, lsb_release, update-manager,
-                       software-properties-gtk; REPOMAN_HELPER_PATH env override;
-                       check_required_tools()
+                       software-properties-gtk; POLKIT_HELPER hardcoded to
+                       /usr/lib/repoman/polkit-helper; check_required_tools()
   config_io.py       — Save/load .repoman state files (pure, no GTK, fully tested):
                        save_config() → JSON str; load_config() → list[dict];
                        match_repos() → (matched, missing) by uris[0];
@@ -138,31 +138,36 @@ src/repoman/
                        repos-updated and closing signals; _schedule_close() pattern
     base_page.py     — RepomanWizardPage (Adw.NavigationPage); _content_box, _next_button,
                        can_proceed(), _on_proceed(), refresh_proceed()
+    popover.py       — make_info_button(): flat circular Gtk.MenuButton with status icon
+                       and info popover (headline, suite, target, Launchpad link for PPAs);
+                       _clear_label_selections(): shared by all wizard pages and compat_checker
     select_page.py   — Step 1: checkbox list, pre-ticks non-UNAVAILABLE repos;
                        "Select all / Deselect all" button in group header suffix;
                        UNKNOWN status shows dimmed question mark (not spinner —
-                       no checks run on Step 1)
-    check_page.py    — Step 2: background Checker thread; spinner → icon per row;
+                       no checks run on Step 1); all icons are make_info_button() MenuButtons
+    check_page.py    — Step 2: background Checker thread; spinner → make_info_button() per row;
                        Next locked until all pending == 0; _checks_started flag
                        guards _on_shown() so back-navigation never re-runs checks
-                       or duplicates icons; icons have set_tooltip_text()
+                       or duplicates icons; icons have tooltip + popover
     confirm_page.py  — Step 3: "Will be re-enabled" / "Skipped" groups (each hidden
                        when empty); auth row hidden when nothing to apply; "Apply
                        changes" relabelled "Done" and closes wizard when _to_apply
-                       is empty; icons have set_tooltip_text(); pkexec via
-                       subprocess.run(); toast on failure; on_complete on success
+                       is empty; icons are make_info_button() with tooltip + popover;
+                       pkexec via subprocess.run(); toast on failure; on_complete on success
     restore_dialog.py       — RestoreWizardDialog; wraps 3-page restore flow;
                               accepts saved/actions/codenames/live_repos/on_complete;
                               same repos-updated + closing signals as RepomanWizardDialog
     restore_classify_page.py — Step 1: read-only grouped overview of all entries
                                grouped by action (update_suite/ppa_check/add_disabled/
-                               restore_as_is); skips page 2 if no ppa_check entries
-    restore_check_page.py   — Step 2: per-PPA spinner -> icon availability check via
-                              check_ppa_for_codename(); _checks_started guard;
+                               restore_as_is); all rows have make_info_button() icon;
+                               skips page 2 if no ppa_check entries
+    restore_check_page.py   — Step 2: per-PPA spinner -> make_info_button() availability
+                              check via check_ppa_for_codename(); _checks_started guard;
                               mutates state.actions[i] on GTK thread; _pending counter
     restore_confirm_page.py — Step 3: grouped summary (updating/disabled/unchanged);
                               auth card; polkit write_files apply; rollback on failure;
-                              calls state.on_complete(missing) with pre-adapted entries
+                              calls state.on_complete(missing) with pre-adapted entries;
+                              all icons are make_info_button() with tooltip + popover
 
 polkit-helper        — Privileged write helper (run via pkexec).
                        Actions: enable_repos (patch Suites/Enabled in existing .sources),
@@ -253,8 +258,8 @@ Deletes happen after all writes succeed. Used for `.list` → `.sources` convers
 (write new `.sources`, delete old `.list` in one polkit prompt). Also used by
 the state load feature to apply enabled/disabled changes and create missing repos.
 
-The helper is located via `REPOMAN_HELPER_PATH` env var (dev) or
-`/usr/lib/repoman/polkit-helper` (installed). Set the env var when running from source.
+The helper path is hardcoded to `/usr/lib/repoman/polkit-helper`. For dev, symlink
+the repo's `polkit-helper` there (see One-time dev setup above).
 
 ---
 

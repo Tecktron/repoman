@@ -13,6 +13,7 @@ from ... import config_io
 from ...models import AvailabilityStatus, Repository, WizardState
 from ..position import center_on_parent
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class SelectReposPage(RepomanWizardPage):
@@ -152,26 +153,37 @@ class SelectReposPage(RepomanWizardPage):
             check.connect("toggled", lambda _cb: self._on_check_toggled())
             row.add_prefix(check)
             row.set_activatable_widget(check)
-            row.add_suffix(self._status_icon(repo))
+            row.add_suffix(self._make_status_button(repo))
             group.add(row)
             self._checks[id(repo)] = (repo, check)
 
         self._update_select_all_btn()
 
     @staticmethod
-    def _status_icon(repo: Repository) -> Gtk.Widget:
+    def _make_status_button(repo: Repository) -> Gtk.MenuButton:
         icon_name, css = {
-            AvailabilityStatus.AVAILABLE: ("emblem-ok-symbolic", "success"),
+            AvailabilityStatus.AVAILABLE: ("pamac-tray-no-update", "success"),
             AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
-            AvailabilityStatus.SUITE_AGNOSTIC: ("emblem-synchronizing-symbolic", ""),
+            AvailabilityStatus.SUITE_AGNOSTIC: ("locked-symbolic", ""),
         }.get(repo.availability, ("dialog-question-symbolic", ""))
-        icon = Gtk.Image.new_from_icon_name(icon_name)
-        if css:
-            icon.add_css_class(css)
-        if repo.availability not in (
+        is_unknown = repo.availability not in (
             AvailabilityStatus.AVAILABLE,
             AvailabilityStatus.UNAVAILABLE,
             AvailabilityStatus.SUITE_AGNOSTIC,
-        ):
-            icon.set_opacity(0.55)
-        return icon
+        )
+        tooltip = {
+            AvailabilityStatus.AVAILABLE: "Available for current release",
+            AvailabilityStatus.UNAVAILABLE: "Not available - will be skipped in Step 2",
+            AvailabilityStatus.SUITE_AGNOSTIC: "Suite-agnostic - no update needed",
+        }.get(repo.availability, "Availability will be checked in Step 2")
+        return make_info_button(
+            icon_name,
+            css,
+            tooltip,
+            headline=tooltip,
+            suites=repo.suites,
+            target_label=None,
+            ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+            ppa_name=repo.ppa_name if repo.is_ppa else None,
+            icon_opacity=0.55 if is_unknown else 1.0,
+        )

@@ -15,6 +15,7 @@ from gi.repository import Adw, GLib, Gtk
 from ...models import AvailabilityStatus, Repository, WizardState
 from ...paths import PKEXEC, POLKIT_HELPER
 from .base_page import RepomanWizardPage
+from .popover import make_info_button
 
 
 class ConfirmChangesPage(RepomanWizardPage):
@@ -58,6 +59,7 @@ class ConfirmChangesPage(RepomanWizardPage):
             icon = Gtk.Image.new_from_icon_name("dialog-password-symbolic")
             icon.set_icon_size(Gtk.IconSize.LARGE)
             icon.add_css_class("accent")
+            icon.set_tooltip_text("Requires administrator password")
             icon.set_margin_start(12)
             auth_card.append(icon)
             text = Gtk.Box(
@@ -89,7 +91,7 @@ class ConfirmChangesPage(RepomanWizardPage):
 
         skipped = [r for r in self._state.selected if r.availability == AvailabilityStatus.UNAVAILABLE]
         if skipped:
-            skipped_group = Adw.PreferencesGroup(title="Skipped — not yet available for this release")
+            skipped_group = Adw.PreferencesGroup(title="Skipped - not yet available for this release")
             for repo in skipped:
                 skipped_group.add(self._make_row(repo, success=False))
             self._content_box.append(skipped_group)
@@ -99,16 +101,27 @@ class ConfirmChangesPage(RepomanWizardPage):
             title=repo.display_name,
             subtitle=repo.uris[0] if repo.uris else "",
         )
-        icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic" if success else "dialog-warning-symbolic")
-        icon.add_css_class("success" if success else "warning")
         if not success:
-            tooltip = "Not yet available — skipped"
+            tooltip = "Not yet available - skipped"
+            target_label = None
         elif repo.availability == AvailabilityStatus.SUITE_AGNOSTIC:
-            tooltip = "Will be re-enabled (suite-agnostic — suite field unchanged)"
+            tooltip = "Will be re-enabled (suite-agnostic - suite field unchanged)"
+            target_label = "Suite unchanged (suite-agnostic)"
         else:
             tooltip = f"Will be re-enabled for {self._state.target_codename}"
-        icon.set_tooltip_text(tooltip)
-        row.add_suffix(icon)
+            target_label = f"Updating to: {self._state.target_codename}"
+        row.add_suffix(
+            make_info_button(
+                "pamac-tray-no-update" if success else "dialog-warning-symbolic",
+                "success" if success else "warning",
+                tooltip,
+                headline=tooltip,
+                suites=repo.suites,
+                target_label=target_label,
+                ppa_owner=repo.ppa_owner if repo.is_ppa else None,
+                ppa_name=repo.ppa_name if repo.is_ppa else None,
+            )
+        )
         return row
 
     def _repo_payload(self, repo: Repository) -> dict:

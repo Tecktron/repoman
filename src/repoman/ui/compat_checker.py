@@ -18,24 +18,7 @@ from ..upgrade_info import (
     get_upgrade_targets,
 )
 from .position import center_on_parent
-
-
-def _clear_label_selections(popover: Gtk.Popover) -> None:
-    """Popover 'show' handler: defer-clear the auto-selection GTK applies on focus."""
-
-    def _do_clear() -> bool:
-        stack = [popover.get_child()]
-        while stack:
-            w = stack.pop()
-            if isinstance(w, Gtk.Label) and w.get_selectable():
-                w.select_region(0, 0)
-            child = w.get_first_child() if hasattr(w, "get_first_child") else None
-            while child:
-                stack.append(child)
-                child = child.get_next_sibling()
-        return GLib.SOURCE_REMOVE
-
-    GLib.idle_add(_do_clear)
+from .wizard.popover import _clear_label_selections
 
 
 class CompatCheckerWindow(Gtk.Window):
