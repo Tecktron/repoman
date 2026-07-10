@@ -235,7 +235,7 @@ class DetailPane(Gtk.Box):
             resizable=False,
             default_width=400,
         )
-        dlg.set_icon_name("io.github.Tecktron.repoman")
+        dlg.set_icon_name("net.tecktron.repoman")
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=12,

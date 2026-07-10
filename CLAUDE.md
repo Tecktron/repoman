@@ -35,7 +35,7 @@ Saying "looks good" without tracing every branch is not a pass.
 
 ---
 
-**App ID:** `io.github.Tecktron.repoman`
+**App ID:** `net.tecktron.repoman`
 **Platform minimum:** Xubuntu 24.04 LTS (libadwaita 1.5.0)
 **Target environment:** Xfce/Xfwm4 (system-decorated windows, SSD, no CSD)
 **Singleton:** `Gio.Application` — a second `python3 -m repoman.main` launch
@@ -203,7 +203,7 @@ polkit-helper        — Privileged write helper (run via pkexec).
                        Validates all paths against _ALLOWED before any write.
                        Writes atomically: .tmp → rename.
 data/
-  io.github.Tecktron.repoman.policy  — polkit policy; auth_admin_keep
+  net.tecktron.repoman.policy  — polkit policy; auth_admin_keep
   suite-agnostic.conf        — dev fallback agnostic suite names
 ```
 

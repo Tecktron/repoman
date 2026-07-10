@@ -3,7 +3,7 @@
   "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
   "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
-  <action id="io.github.Tecktron.repoman.apply">
+  <action id="net.tecktron.repoman.apply">
     <description>Modify APT repository configuration</description>
     <message>Authentication is required to modify repository settings</message>
     <defaults>

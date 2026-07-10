@@ -1,3 +1,16 @@
+repoman (0.2.1-1) noble; urgency=low
+
+  * Rename app ID to net.tecktron.repoman (owned domain, no github dependency).
+  * Change in-app help URL to repoman.tecktron.net (stable owned subdomain).
+  * Restore wizard: Existing vs Adding redesign; matched repos with current suite
+    skip network checks and only sync enabled state.
+  * Info popovers and tooltips on compat checker suite-agnostic and non-PPA rows.
+  * Fix availability icon (tecktron-repoman-available, was pamac-tray-no-update).
+  * Fix: entry_to_repository normalises .list source paths to .sources.
+  * Fix: _show_missing_repos_dialog guards against empty missing list.
+
+ -- Tecktron Studios <software@tecktron.net>  Fri, 11 Jul 2026 00:00:00 +0000
+
 repoman (0.2.0-1) noble; urgency=low
 
   * Cross-machine restore wizard: replace flat summary dialog with a 3-page wizard

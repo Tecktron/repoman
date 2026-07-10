@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.Tecktron.repoman</id>
+  <id>net.tecktron.repoman</id>
 
   <name>Repo Man</name>
   <summary>Manage APT repositories for system upgrades</summary>
@@ -26,9 +26,9 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.Tecktron.repoman.desktop</launchable>
+  <launchable type="desktop-id">net.tecktron.repoman.desktop</launchable>
 
-  <url type="homepage">https://tecktron.github.io/repoman/</url>
+  <url type="homepage">https://repoman.tecktron.net/</url>
   <url type="bugtracker">https://github.com/Tecktron/repoman/issues</url>
   <url type="vcs-browser">https://github.com/Tecktron/repoman</url>
 

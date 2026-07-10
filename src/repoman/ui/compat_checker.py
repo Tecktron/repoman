@@ -37,7 +37,7 @@ class CompatCheckerWindow(Gtk.Window):
             default_width=520,
             default_height=560,
         )
-        self.set_icon_name("io.github.Tecktron.repoman")
+        self.set_icon_name("net.tecktron.repoman")
         self._repos = repos
         self._targets: list[tuple[str, str]] = []
         self._ppa_repos: list[Repository] = []

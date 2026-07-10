@@ -104,7 +104,7 @@ sudo ln -sf /path/to/repoman/polkit-helper /usr/lib/repoman/polkit-helper
 The polkit policy must also be installed and polkit restarted once:
 
 ```bash
-sudo install -m 644 data/io.github.Tecktron.repoman.policy \
+sudo install -m 644 data/net.tecktron.repoman.policy \
     /usr/share/polkit-1/actions/
 sudo systemctl restart polkit
 ```
@@ -176,10 +176,10 @@ repoman/
 │           └── confirm_page.py  # Step 3: review + apply via polkit
 ├── polkit-helper                # Privileged write helper (run via pkexec)
 ├── data/
-│   ├── io.github.Tecktron.repoman.desktop
-│   ├── io.github.Tecktron.repoman.policy  # Polkit action definition
-│   ├── io.github.Tecktron.repoman.gschema.xml
-│   ├── io.github.Tecktron.repoman.metainfo.xml
+│   ├── net.tecktron.repoman.desktop
+│   ├── net.tecktron.repoman.policy  # Polkit action definition
+│   ├── net.tecktron.repoman.gschema.xml
+│   ├── net.tecktron.repoman.metainfo.xml
 │   ├── suite-agnostic.conf      # Suite names that never need a codename update
 │   └── icons/hicolor/           # App icon — SVG + PNG at 8 sizes
 ├── tests/                       # pytest test suite

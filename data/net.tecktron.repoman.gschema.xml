@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="io.github.Tecktron.repoman" path="/io/github/Tecktron/repoman/">
+  <schema id="net.tecktron.repoman" path="/net/tecktron/repoman/">
     <key name="window-width" type="i">
       <default>900</default>
     </key>

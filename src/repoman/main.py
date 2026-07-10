@@ -21,7 +21,7 @@ class RepomanApplication(Adw.Application):
 
     def __init__(self) -> None:
         super().__init__(
-            application_id="io.github.Tecktron.repoman",
+            application_id="net.tecktron.repoman",
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
         )
         self.connect("activate", self._on_activate)
@@ -41,7 +41,7 @@ class RepomanApplication(Adw.Application):
                 resizable=False,
                 default_width=400,
             )
-            dlg.set_icon_name("io.github.Tecktron.repoman")
+            dlg.set_icon_name("net.tecktron.repoman")
             box = Gtk.Box(
                 orientation=Gtk.Orientation.VERTICAL,
                 spacing=12,
