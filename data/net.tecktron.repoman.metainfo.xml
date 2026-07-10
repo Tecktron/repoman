@@ -46,6 +46,54 @@
   </recommends>
 
   <releases>
+    <release version="0.2.1" date="2026-07-10">
+      <description>
+        <p>Polish and fixes:</p>
+        <ul>
+          <li>App ID changed to net.tecktron.repoman (owned domain)</li>
+          <li>Restore wizard: Existing vs Adding redesign — matched repos with a current suite skip network checks and only sync enabled state</li>
+          <li>Fix: opening URLs now works correctly on Xfce without GNOME portal</li>
+          <li>Fix: entry_to_repository normalises .list source paths to .sources</li>
+          <li>Fix: missing repos dialog guards against empty list</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.2.0" date="2026-07-08">
+      <description>
+        <p>Major feature release:</p>
+        <ul>
+          <li>Cross-machine restore wizard: 3-page flow with classify, live PPA checks, and confirm/apply</li>
+          <li>Info popovers on all wizard pages — click any status icon for suite, target, and Launchpad details</li>
+          <li>Exit menu item (Ctrl+Q) added to Tools menu</li>
+          <li>Select Disabled button in Remove Multiple Repos dialog</li>
+          <li>Fix broken icon names on Xubuntu (emblem-ok-symbolic, emblem-synchronizing-symbolic)</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.7" date="2026-07-08">
+      <description>
+        <p>Cross-machine restore support:</p>
+        <ul>
+          <li>.repoman v2 format bundles GPG signing keys and records the saved codename</li>
+          <li>Loading a file from a different machine adapts suites automatically with PPA availability checks</li>
+          <li>Polkit helper creates parent directories when writing key files</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.6" date="2026-07-07">
+      <description>
+        <p>Bug fixes:</p>
+        <ul>
+          <li>Fix About dialog showing stale version number</li>
+          <li>Remove built-in apt update; Ctrl+R now opens Software Updater</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.5" date="2026-07-03"/>
+    <release version="0.1.4" date="2026-07-03"/>
+    <release version="0.1.3" date="2026-07-03"/>
+    <release version="0.1.2" date="2026-07-03"/>
+    <release version="0.1.1" date="2026-07-03"/>
     <release version="0.1.0" date="2026-06-29">
       <description>
         <p>Initial release.</p>
