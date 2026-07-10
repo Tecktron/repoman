@@ -9,7 +9,7 @@ import gi
 
 gi.require_version("Adw", "1")
 gi.require_version("Gtk", "4.0")
-from gi.repository import Adw, GLib, GObject, Gtk
+from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from ..converter import convert_to_deb822
 from ..models import FileFormat, Repository
@@ -301,7 +301,7 @@ class DetailPane(Gtk.Box):
 
     def _on_open_uri(self, _button: Gtk.Button) -> None:
         if self._repo and self._repo.uris:
-            Gtk.show_uri(self.get_root(), self._repo.uris[0], 0)
+            Gio.AppInfo.launch_default_for_uri(self._repo.uris[0], None)
 
     def _on_save_clicked(self, _button: Gtk.Button) -> None:
         if self._repo is None:

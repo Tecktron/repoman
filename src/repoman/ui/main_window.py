@@ -965,7 +965,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         win.present()
 
     def _open_help(self) -> None:
-        Gtk.show_uri(self, "https://repoman.tecktron.net/getting-started/", 0)
+        Gio.AppInfo.launch_default_for_uri("https://repoman.tecktron.net/getting-started/", None)
 
     def _show_about(self) -> None:
         win = Gtk.Window(
@@ -1023,7 +1023,9 @@ class RepomanWindow(Gtk.ApplicationWindow):
         gh_btn.set_tooltip_text("Open on GitHub")
         gh_btn.add_css_class("flat")
         gh_btn.set_valign(Gtk.Align.CENTER)
-        gh_btn.connect("clicked", lambda _: Gtk.show_uri(win, "https://github.com/Tecktron/repoman", 0))
+        gh_btn.connect(
+            "clicked", lambda _: Gio.AppInfo.launch_default_for_uri("https://github.com/Tecktron/repoman", None)
+        )
         gh_row.add_suffix(gh_btn)
         info_group.add(gh_row)
 
