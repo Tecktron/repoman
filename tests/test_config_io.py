@@ -261,6 +261,11 @@ class TestEntryToRepository:
         repo = config_io.entry_to_repository(self._entry(enabled=False))
         assert repo.enabled is False
 
+    def test_list_source_file_normalised_to_sources(self):
+        entry = self._entry(source_file="/etc/apt/sources.list.d/example.list")
+        repo = config_io.entry_to_repository(entry)
+        assert repo.source_file == Path("/etc/apt/sources.list.d/example.sources")
+
 
 ALL_KNOWN = ["focal", "jammy", "mantic", "noble", "oracular", "plucky", "questing"]
 

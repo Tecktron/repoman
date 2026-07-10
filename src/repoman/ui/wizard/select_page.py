@@ -162,7 +162,7 @@ class SelectReposPage(RepomanWizardPage):
     @staticmethod
     def _make_status_button(repo: Repository) -> Gtk.MenuButton:
         icon_name, css = {
-            AvailabilityStatus.AVAILABLE: ("pamac-tray-no-update", "success"),
+            AvailabilityStatus.AVAILABLE: ("tecktron-repoman-available", "success"),
             AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
             AvailabilityStatus.SUITE_AGNOSTIC: ("locked-symbolic", ""),
         }.get(repo.availability, ("dialog-question-symbolic", ""))

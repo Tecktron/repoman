@@ -14,6 +14,27 @@ This applies to every decision, no matter how minor it seems.
 
 ---
 
+## Code review passes — MANDATORY
+
+When asked to review, check, or do "another pass" on any code:
+
+1. **Trace every exit path** in every method — not just the happy path.
+   For each early return: does it complete all the same side effects
+   (callbacks, signals, state cleanup) that the full path does?
+
+2. **Compare parallel paths** — if there is a success path and a
+   failure/shortcut path, list what each one does and diff them.
+   Anything the success path does that a shortcut skips is a bug candidate.
+
+3. **Wizard `_on_proceed` checklist** — every exit must account for:
+   - `state.on_complete(...)` called if it exists
+   - Signals emitted (repos-updated, closing)
+   - In-progress state cleaned up
+
+Saying "looks good" without tracing every branch is not a pass.
+
+---
+
 **App ID:** `io.github.Tecktron.repoman`
 **Platform minimum:** Xubuntu 24.04 LTS (libadwaita 1.5.0)
 **Target environment:** Xfce/Xfwm4 (system-decorated windows, SSD, no CSD)
@@ -84,7 +105,7 @@ python3 -m repoman.main
 
 ```bash
 cd /home/craig/Projects/repoman
-python3 -m pytest tests/ -q          # 220 tests, all must pass
+python3 -m pytest tests/ -q          # 221 tests, all must pass
 ruff check src/                       # linter
 ruff format --check src/              # formatter
 ```
@@ -157,17 +178,24 @@ src/repoman/
     restore_dialog.py       — RestoreWizardDialog; wraps 3-page restore flow;
                               accepts saved/actions/codenames/live_repos/on_complete;
                               same repos-updated + closing signals as RepomanWizardDialog
-    restore_classify_page.py — Step 1: read-only grouped overview of all entries
-                               grouped by action (update_suite/ppa_check/add_disabled/
-                               restore_as_is); all rows have make_info_button() icon;
-                               skips page 2 if no ppa_check entries
+    restore_classify_page.py — Step 1: "Existing repos" vs "Repos to add" overview.
+                               Pre-resolve: matched repos whose live suite is already
+                               current (or agnostic) → "restore_as_is" (sync enabled
+                               only); stale-suite matched repos keep classified action.
+                               Existing sub-groups: state-change, suite-updating,
+                               checking PPA availability, no-changes. Adding sub-groups:
+                               checking Launchpad, will be created, add-disabled, as-is.
+                               Skips page 2 if no ppa_check entries remain.
     restore_check_page.py   — Step 2: per-PPA spinner -> make_info_button() availability
                               check via check_ppa_for_codename(); _checks_started guard;
-                              mutates state.actions[i] on GTK thread; _pending counter
-    restore_confirm_page.py — Step 3: grouped summary (updating/disabled/unchanged);
-                              auth card; polkit write_files apply; rollback on failure;
-                              calls state.on_complete(missing) with pre-adapted entries;
-                              all icons are make_info_button() with tooltip + popover
+                              _matched_ids distinguishes existing vs new PPAs — UNAVAILABLE
+                              matched → restore_as_is (keep suite, sync enabled);
+                              UNAVAILABLE missing → add_disabled; _pending counter
+    restore_confirm_page.py — Step 3: grouped summary. Matched: "Updating to {cc}"
+                              (per-row enabled/disabled icon), "Enabling", "Disabling",
+                              "No changes". Missing: "Not found - will be added
+                              enabled/disabled". Auth card; polkit write_files apply;
+                              rollback on failure; all icons make_info_button()
 
 polkit-helper        — Privileged write helper (run via pkexec).
                        Actions: enable_repos (patch Suites/Enabled in existing .sources),

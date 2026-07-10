@@ -37,7 +37,7 @@ class AvailabilityStatus(Enum):
 # Maps each AvailabilityStatus to (icon_name, css_class) for UI badges.
 # UNKNOWN and CHECKING have no badge (handled separately by callers).
 AVAILABILITY_ICONS: dict[AvailabilityStatus, tuple[str, str]] = {
-    AvailabilityStatus.AVAILABLE: ("pamac-tray-no-update", "success"),
+    AvailabilityStatus.AVAILABLE: ("tecktron-repoman-available", "success"),
     AvailabilityStatus.UNAVAILABLE: ("dialog-warning-symbolic", "warning"),
     AvailabilityStatus.SUITE_AGNOSTIC: ("locked-symbolic", ""),
 }

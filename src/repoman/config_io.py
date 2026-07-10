@@ -182,9 +182,13 @@ def entry_to_repository(entry: dict) -> Repository:
 
     Used when creating repos that exist in the config but not on the system.
     Always produces DEB822 format; source_file is taken from the saved entry.
+    .list paths are normalised to .sources so the parser picks them up correctly.
     """
+    source_file = Path(entry["source_file"])
+    if source_file.suffix == ".list":
+        source_file = source_file.with_suffix(".sources")
     return Repository(
-        source_file=Path(entry["source_file"]),
+        source_file=source_file,
         file_format=FileFormat.DEB822,
         types=entry.get("types") or ["deb"],
         uris=entry["uris"],

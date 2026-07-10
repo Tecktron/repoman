@@ -112,7 +112,7 @@ class ConfirmChangesPage(RepomanWizardPage):
             target_label = f"Updating to: {self._state.target_codename}"
         row.add_suffix(
             make_info_button(
-                "pamac-tray-no-update" if success else "dialog-warning-symbolic",
+                "tecktron-repoman-available" if success else "dialog-warning-symbolic",
                 "success" if success else "warning",
                 tooltip,
                 headline=tooltip,

@@ -812,10 +812,19 @@ class RepomanWindow(Gtk.ApplicationWindow):
     # ------------------------------------------------------------------
 
     def _show_missing_repos_dialog(self, missing: list[dict]) -> None:
+        if not missing:
+            return
         n = len(missing)
         enabled_count = sum(1 for m in missing if m.get("enabled", True))
         # Only warn about keys that aren't bundled in the file
-        needs_manual_key = [m for m in missing if m.get("signed_by") and not m.get("signed_by_content_b64")]
+        needs_manual_key = [
+            m
+            for m in missing
+            if m.get("signed_by")
+            and isinstance(m["signed_by"], str)
+            and m["signed_by"].startswith("/")
+            and not m.get("signed_by_content_b64")
+        ]
 
         body = (
             f"{n} {'repository' if n == 1 else 'repositories'} from the config "

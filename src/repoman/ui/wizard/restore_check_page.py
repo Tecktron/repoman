@@ -41,6 +41,8 @@ class RestoreCheckPpasPage(RepomanWizardPage):
         self._row_widgets: dict[int, tuple[Adw.ActionRow, Gtk.Spinner, list[str], str | None, str | None]] = {}
         self._pending = len(self._ppa_indices)
         self._checks_started = False
+        matched_now, _ = config_io.match_repos(state_typed.saved, state_typed.live_repos)
+        self._matched_ids = {id(e) for e, _ in matched_now}
         self._next_button.set_sensitive(False)
         self._build_ui()
 
@@ -60,10 +62,11 @@ class RestoreCheckPpasPage(RepomanWizardPage):
 
     def _build_ui(self) -> None:
         state: RestoreWizardState = self._state
+        cc = state.current_codename
         n = len(self._ppa_indices)
         self._group = Adw.PreferencesGroup(
             title="PPAs",
-            description=f"Checking {n} PPA{'s' if n != 1 else ''} for {state.current_codename}",
+            description=f"Checking {n} PPA{'s' if n != 1 else ''} for {cc}",
         )
         self._content_box.append(self._group)
 
@@ -73,6 +76,12 @@ class RestoreCheckPpasPage(RepomanWizardPage):
             uri = (entry.get("uris") or [""])[0]
             row = Adw.ActionRow(title=name, subtitle=uri if name != uri else "")
             spinner = Gtk.Spinner(spinning=True)
+            is_matched = id(entry) in self._matched_ids
+            spinner.set_tooltip_text(
+                f"Existing on this machine - checking if {cc} is supported"
+                if is_matched
+                else f"Not yet on this machine - checking if {cc} is supported"
+            )
             row.add_suffix(spinner)
             self._group.add(row)
             repo = config_io.entry_to_repository(entry)
@@ -98,14 +107,26 @@ class RestoreCheckPpasPage(RepomanWizardPage):
     def _on_row_checked(self, idx: int, status: AvailabilityStatus) -> bool:
         state: RestoreWizardState = self._state
         row, spinner, suites, ppa_owner, ppa_name = self._row_widgets.get(idx, (None, None, [], None, None))
+        cc = state.current_codename
+        is_matched = id(state.saved[idx]) in self._matched_ids
+
         if row is not None:
             row.remove(spinner)
             icon_name, css = AVAILABILITY_ICONS.get(status, ("dialog-question-symbolic", ""))
-            cc = state.current_codename
-            tooltip = {
-                AvailabilityStatus.AVAILABLE: f"Available for {cc} - suite will be updated",
-                AvailabilityStatus.UNAVAILABLE: f"Not available for {cc} - will be added as disabled",
-            }.get(status, "Could not check - network error")
+            if status == AvailabilityStatus.AVAILABLE:
+                tooltip = (
+                    f"Available for {cc} - suite will be updated"
+                    if is_matched
+                    else f"Available for {cc} - will be added"
+                )
+            elif status == AvailabilityStatus.UNAVAILABLE:
+                tooltip = (
+                    f"Not available for {cc} - enabled state from file will be applied"
+                    if is_matched
+                    else f"Not available for {cc} - will be added as disabled"
+                )
+            else:
+                tooltip = "Could not check - network error"
             row.add_suffix(
                 make_info_button(
                     icon_name,
@@ -113,14 +134,19 @@ class RestoreCheckPpasPage(RepomanWizardPage):
                     tooltip,
                     headline=tooltip,
                     suites=suites,
-                    target_label=f"Checking for: {state.current_codename}",
+                    target_label=f"Checking for: {cc}",
                     ppa_owner=ppa_owner,
                     ppa_name=ppa_name,
                 )
             )
 
         # Mutate actions on the GTK thread
-        state.actions[idx] = "update_suite" if status == AvailabilityStatus.AVAILABLE else "add_disabled"
+        if status == AvailabilityStatus.AVAILABLE:
+            state.actions[idx] = "update_suite"
+        elif is_matched:
+            state.actions[idx] = "restore_as_is"
+        else:
+            state.actions[idx] = "add_disabled"
 
         self._pending -= 1
         if self._pending == 0:

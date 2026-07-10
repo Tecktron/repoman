@@ -111,7 +111,7 @@ class CompatCheckerWindow(Gtk.Window):
             margin_top=24,
             margin_bottom=24,
         )
-        placeholder_icon = Gtk.Image.new_from_icon_name("software-boutique")
+        placeholder_icon = Gtk.Image.new_from_icon_name("aptdaemon-update-cache")
         placeholder_icon.set_pixel_size(64)
         placeholder_icon.add_css_class("dim-label")
         placeholder.append(placeholder_icon)

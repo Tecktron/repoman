@@ -11,4 +11,5 @@ data/icons/hicolor/48x48/apps/io.github.Tecktron.repoman.png    usr/share/icons/
 data/icons/hicolor/64x64/apps/io.github.Tecktron.repoman.png    usr/share/icons/hicolor/64x64/apps/
 data/icons/hicolor/128x128/apps/io.github.Tecktron.repoman.png  usr/share/icons/hicolor/128x128/apps/
 data/icons/hicolor/256x256/apps/io.github.Tecktron.repoman.png  usr/share/icons/hicolor/256x256/apps/
+data/icons/hicolor/24x24/status/tecktron-repoman-available.png  usr/share/icons/hicolor/24x24/status/
 data/suite-agnostic.conf                        usr/share/repoman/

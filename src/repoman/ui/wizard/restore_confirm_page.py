@@ -23,8 +23,15 @@ from .popover import make_info_button
 class RestoreConfirmPage(RepomanWizardPage):
     """
     Page 3 — review categorised changes and apply via polkit.
-    Rolls back in-memory mutations on failure.
-    Relabels button "Done" and closes immediately if there is nothing to write.
+
+    Matched repos appear in groups by their resolved action:
+      - "Updating to {cc}"  (update_suite: per-row enabled/disabled icon)
+      - "Enabling"          (restore_as_is: was disabled, saved file says enabled)
+      - "Disabling"         (restore_as_is/add_disabled: will be disabled)
+      - "No changes"        (restore_as_is: enabled state matches saved file)
+
+    Missing repos appear in "Not found - will be added enabled/disabled" groups.
+    All writes are sent in a single polkit call; in-memory mutations roll back on failure.
     """
 
     __gtype_name__ = "RestoreConfirmPage"
@@ -44,16 +51,19 @@ class RestoreConfirmPage(RepomanWizardPage):
         self._changed_repos: list[tuple[Repository, bool, list[str] | None]] = []
         self._writes: list[dict] = []
         self._has_changes = False
+        self._matched_enabling: list[dict] = []
+        self._matched_disabling: list[dict] = []
+        self._matched_unchanged: list[dict] = []
         self._build_apply_plan()
         self._build_ui()
-        if not self._has_changes:
+        if not self._has_changes and not self._missing:
             self._next_button.set_label("Done")
 
     def can_proceed(self) -> bool:
         return True
 
     def _on_proceed(self) -> None:
-        if not self._has_changes:
+        if not self._has_changes and not self._missing:
             self.get_root().close()
             return
         self._next_button.set_sensitive(False)
@@ -61,7 +71,7 @@ class RestoreConfirmPage(RepomanWizardPage):
         threading.Thread(target=self._apply, daemon=True).start()
 
     def _build_apply_plan(self) -> None:
-        """Pre-compute writes and pre-adapt missing entries (done before UI build so state is consistent)."""
+        """Pre-compute all writes: matched repo mutations and missing repo creates."""
         state: RestoreWizardState = self._state
         cc = state.current_codename
 
@@ -77,24 +87,45 @@ class RestoreConfirmPage(RepomanWizardPage):
                 live.enabled = entry.get("enabled", live.enabled)
                 changed = True
             elif action == "add_disabled":
-                live.enabled = False
-                changed = True
-            elif action == "restore_as_is":
-                if entry.get("enabled") != live.enabled:
-                    live.enabled = entry["enabled"]
+                if live.enabled:
+                    live.enabled = False
                     changed = True
+                self._matched_disabling.append(entry)
+            elif action == "restore_as_is":
+                saved_enabled = entry.get("enabled", live.enabled)
+                if saved_enabled != original_enabled:
+                    live.enabled = saved_enabled
+                    changed = True
+                    if saved_enabled:
+                        self._matched_enabling.append(entry)
+                    else:
+                        self._matched_disabling.append(entry)
+                else:
+                    self._matched_unchanged.append(entry)
 
             if changed:
                 self._writes.append({"path": str(live.source_file), "content": repo_to_deb822(live)})
                 self._changed_repos.append((live, original_enabled, original_suites))
 
-        # Pre-adapt missing entries so the missing-repos dialog creates them correctly
+        # Pre-adapt missing entries then build their write list
         for entry in self._missing:
             action = self._action_map.get(id(entry), "restore_as_is")
             if action == "update_suite":
                 entry["suites"] = [cc]
             elif action == "add_disabled":
                 entry["enabled"] = False
+
+        for entry in self._missing:
+            repo = config_io.entry_to_repository(entry)
+            if entry.get("signed_by_content_b64") and repo.signed_by and repo.signed_by.startswith("/"):
+                self._writes.append(
+                    {
+                        "path": repo.signed_by,
+                        "content": entry["signed_by_content_b64"],
+                        "encoding": "base64",
+                    }
+                )
+            self._writes.append({"path": str(repo.source_file), "content": repo_to_deb822(repo)})
 
         self._has_changes = bool(self._writes)
 
@@ -156,60 +187,111 @@ class RestoreConfirmPage(RepomanWizardPage):
             auth_card.append(text)
             self._content_box.append(auth_card)
 
-        update_entries = [e for e, a in zip(saved, actions, strict=True) if a == "update_suite"]
-        disabled_entries = [e for e, a in zip(saved, actions, strict=True) if a == "add_disabled"]
-        unchanged_entries = [e for e, a in zip(saved, actions, strict=True) if a == "restore_as_is"]
+        # Filter to matched entries only — missing entries get their own group below
+        matched_set = {id(e) for e, _ in self._matched}
+        update_entries = [
+            e for e, a in zip(saved, actions, strict=True) if a == "update_suite" and id(e) in matched_set
+        ]
 
         if update_entries:
-            group = Adw.PreferencesGroup(
-                title=f"Updating to {cc}",
-                description="Suite field updated and repo enabled",
-            )
+            group = Adw.PreferencesGroup(title=f"Updating to {cc}")
             for entry in update_entries:
+                is_enabled = entry.get("enabled", True)
+                if is_enabled:
+                    icon_name, css = "tecktron-repoman-available", "success"
+                    tooltip = f"Suite updated to {cc} - will be enabled"
+                else:
+                    icon_name, css = "dialog-warning-symbolic", "warning"
+                    tooltip = f"Suite updated to {cc} - will be disabled"
+                group.add(_make_row(entry, icon_name, css, tooltip, headline=tooltip, target_label=f"Target: {cc}"))
+            self._content_box.append(group)
+
+        if self._matched_enabling:
+            group = Adw.PreferencesGroup(title="Enabling")
+            for entry in self._matched_enabling:
                 group.add(
                     _make_row(
                         entry,
-                        "pamac-tray-no-update",
+                        "tecktron-repoman-available",
                         "success",
-                        f"Suite updated to {cc}",
-                        headline=f"Suite updated to {cc}",
-                        target_label=f"Target: {cc}",
+                        "Will be enabled",
+                        headline="Will be enabled",
+                        target_label=None,
                     )
                 )
             self._content_box.append(group)
 
-        if disabled_entries:
-            group = Adw.PreferencesGroup(
-                title="Adding as disabled",
-                description=f"Not available for {cc} - added with Enabled: no",
-            )
-            for entry in disabled_entries:
+        if self._matched_disabling:
+            group = Adw.PreferencesGroup(title="Disabling")
+            for entry in self._matched_disabling:
                 group.add(
                     _make_row(
                         entry,
                         "dialog-warning-symbolic",
                         "warning",
-                        f"Not available for {cc}",
-                        headline=f"Not available for {cc} - added as disabled",
-                        target_label=f"Target: {cc}",
-                    )
-                )
-            self._content_box.append(group)
-
-        if unchanged_entries:
-            group = Adw.PreferencesGroup(title="Restoring unchanged")
-            for entry in unchanged_entries:
-                group.add(
-                    _make_row(
-                        entry,
-                        "locked-symbolic",
-                        "",
-                        "Restored as-is",
-                        headline="Restored unchanged",
+                        "Will be disabled",
+                        headline="Will be disabled",
                         target_label=None,
                     )
                 )
             self._content_box.append(group)
+
+        if self._matched_unchanged:
+            group = Adw.PreferencesGroup(title="No changes")
+            for entry in self._matched_unchanged:
+                group.add(
+                    _make_row(
+                        entry, "locked-symbolic", "", "Already up to date", headline="No changes", target_label=None
+                    )
+                )
+            self._content_box.append(group)
+
+        if self._missing:
+            # Split by final enabled state — _build_apply_plan() has already mutated
+            # add_disabled entries to entry["enabled"] = False.
+            missing_enabled = [e for e in self._missing if e.get("enabled", True)]
+            missing_disabled = [e for e in self._missing if not e.get("enabled", True)]
+
+            def _missing_row(entry: dict) -> Adw.ActionRow:
+                action = self._action_map.get(id(entry), "restore_as_is")
+                is_enabled = entry.get("enabled", True)
+                if action == "update_suite":
+                    target_label: str | None = f"Target: {cc}"
+                    if is_enabled:
+                        icon_name, css = "tecktron-repoman-available", "success"
+                        tooltip = f"Suite updated to {cc} - will be added enabled"
+                    else:
+                        icon_name, css = "locked-symbolic", ""
+                        tooltip = f"Suite updated to {cc} - disabled in original file"
+                elif action == "add_disabled":
+                    icon_name, css = "dialog-warning-symbolic", "warning"
+                    tooltip = f"Not available for {cc} - will be added as disabled"
+                    target_label = f"Target: {cc}"
+                else:
+                    icon_name, css = "locked-symbolic", ""
+                    tooltip = "Will be added unchanged"
+                    target_label = None
+                return _make_row(entry, icon_name, css, tooltip, headline=tooltip, target_label=target_label)
+
+            if missing_enabled:
+                ne = len(missing_enabled)
+                enabled_group = Adw.PreferencesGroup(
+                    title=f"Not found - will be added enabled ({ne})",
+                    description=f"{'This repository does' if ne == 1 else 'These repositories do'} not exist on this system and will be created and enabled",
+                )
+                for entry in missing_enabled:
+                    enabled_group.add(_missing_row(entry))
+                self._content_box.append(enabled_group)
+
+            if missing_disabled:
+                nd = len(missing_disabled)
+                disabled_group = Adw.PreferencesGroup(
+                    title=f"Not found - will be added disabled ({nd})",
+                    description=f"{'This repository does' if nd == 1 else 'These repositories do'} not exist on this system and will be created with Enabled: no",
+                )
+                for entry in missing_disabled:
+                    disabled_group.add(_missing_row(entry))
+                self._content_box.append(disabled_group)
 
     def _apply(self) -> None:
         """Background thread. Calls pkexec — blocks until auth resolves."""
@@ -229,9 +311,6 @@ class RestoreConfirmPage(RepomanWizardPage):
         root = self.get_root()
         if hasattr(root, "emit_repos_updated"):
             root.emit_repos_updated()
-        state: RestoreWizardState = self._state
-        if state.on_complete:
-            state.on_complete(self._missing)
         root.close()
         return GLib.SOURCE_REMOVE
 
