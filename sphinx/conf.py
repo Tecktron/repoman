@@ -29,7 +29,6 @@ autodoc_mock_imports = [
     "gi.repository",
     "gi.repository.Adw",
     "gi.repository.Gdk",
-    "gi.repository.GdkX11",
     "gi.repository.GLib",
     "gi.repository.Gio",
     "gi.repository.GObject",

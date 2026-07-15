@@ -386,8 +386,6 @@ popover.connect("show", _clear_label_selections)
 - Network calls: narrow `except` to specific types (`Timeout`, `ConnectionError`,
   `RequestException`); return `(None, error_str)` to the caller.
 - File/parse: `except (OSError, csv.Error)`, `except configparser.Error`.
-- Best-effort X11/positioning code: `except Exception:` is acceptable **only** with
-  `_log.debug(..., exc_info=True)` — never `pass`.
 - Never suppress exceptions silently. No `# noqa: S110`.
 
 ---
