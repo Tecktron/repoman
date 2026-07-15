@@ -25,14 +25,6 @@ Repository Row
    :undoc-members:
    :show-inheritance:
 
-Window Positioning
-------------------
-
-.. automodule:: repoman.ui.position
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Upgrade Wizard
 --------------
 
