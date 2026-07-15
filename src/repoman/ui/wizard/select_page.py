@@ -11,7 +11,6 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from ... import config_io
 from ...models import AvailabilityStatus, Repository, WizardState
-from ..position import center_on_parent
 from .base_page import RepomanWizardPage
 from .popover import make_info_button
 
@@ -94,11 +93,11 @@ class SelectReposPage(RepomanWizardPage):
             err_box.append(Gtk.Label(label=str(exc), wrap=True, xalign=0, max_width_chars=42))
             btn_row = Gtk.Box(halign=Gtk.Align.END, margin_top=6)
             ok_btn = Gtk.Button(label="OK")
+            ok_btn.add_css_class("suggested-action")
             ok_btn.connect("clicked", lambda _: dlg.close())
             btn_row.append(ok_btn)
             err_box.append(btn_row)
             dlg.set_child(err_box)
-            center_on_parent(dlg)
             dlg.present()
             return
         matched, _ = config_io.match_repos(saved, list(self._state.candidate_repos))

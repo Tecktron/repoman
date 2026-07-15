@@ -7,9 +7,13 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!base.endsWith("/")) base += "/";
 
   var items = [
+    ["Home",                    ""],
+    ["Why repoman",             "why/"],
+    ["Installation",            "install/"],
     ["Getting Started",         "getting-started/"],
     ["Managing Repositories",   "usage/managing-repos/"],
     ["Upgrade Workflow",        "usage/upgrade-workflow/"],
+    ["State Management",        "usage/state-management/"],
     ["Annotations",             "usage/annotations/"],
     ["Configuration",           "reference/config/"],
     ["Changelog",               "changelog/"],

@@ -6,7 +6,7 @@ The upgrade workflow is repoman's primary feature: a guided wizard that reviews 
 
 Run the wizard after upgrading Ubuntu — for example, from 24.04 to 24.10, or from 24.04 LTS to 26.04 LTS. The upgrade banner at the top of the main window appears automatically if repoman detects disabled or stale repositories.
 
-You can also run it any time from **Tools → Run Upgrade Assistant**.
+You can also run it any time from **Tools → Run Upgrade Assistant…**.
 
 ## Step 1 — Select repositories
 
@@ -66,7 +66,7 @@ If you cancel the polkit dialog, a toast appears and the wizard stays open so yo
 
 ## Pre-upgrade compatibility check
 
-Before upgrading Ubuntu, you can check which of your PPAs support the target release using **Tools → Check pre-update compatibility…**
+Before upgrading Ubuntu, you can check which of your PPAs support the target release using **Tools → Check pre-upgrade compatibility…**
 
 Select a target release from the dropdown and click **Check compatibility**. Results use the same status icons as the wizard. Clicking any status icon opens a detail popover with:
 

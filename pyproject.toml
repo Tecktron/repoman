@@ -11,6 +11,11 @@ license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.10"
 dependencies = []
 
+[project.urls]
+Homepage = "https://repoman.tecktron.net/"
+"Bug Tracker" = "https://github.com/Tecktron/repoman/issues"
+Source = "https://github.com/Tecktron/repoman"
+
 [project.scripts]
 repoman = "repoman.main:main"
 

@@ -40,11 +40,9 @@ sudo apt install \
     python3-gi \
     gir1.2-gtk-4.0 \
     gir1.2-adw-1 \
-    gir1.2-packagekitglib-1.0 \
     python3-debian \
     python3-launchpadlib \
     python3-requests \
-    python3-xlib \
     policykit-1 \
     lsb-release
 ```

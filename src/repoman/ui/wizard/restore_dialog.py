@@ -16,7 +16,6 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from ...models import Repository, RestoreWizardState
-from ..position import center_on_parent
 from .restore_classify_page import RestoreClassifyPage
 
 
@@ -53,7 +52,6 @@ class RestoreWizardDialog(Gtk.Window):
             **kwargs,
         )
         self.set_icon_name("net.tecktron.repoman")
-        center_on_parent(self)
         self._closing = False
 
         self._state = RestoreWizardState(

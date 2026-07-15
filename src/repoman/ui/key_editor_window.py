@@ -17,7 +17,6 @@ from .. import gpg
 from ..models import Repository
 from ..paths import PKEXEC, POLKIT_HELPER
 from ..writer import repo_to_deb822
-from .position import center_on_parent
 
 # ---------------------------------------------------------------------------
 # Add window — three tabs: Fetch / Browse existing file / Paste
@@ -59,7 +58,6 @@ class KeyAddWindow(Gtk.Window):
         self._selected_file: str | None = None
         self._build_ui()
         self.connect("map", lambda w: GLib.idle_add(lambda: w.set_focus(None) or GLib.SOURCE_REMOVE))
-        center_on_parent(self)
 
     def _build_ui(self) -> None:
         outer = Gtk.Box(
@@ -419,7 +417,6 @@ class KeyEditWindow(Gtk.Window):
         self._update_paste_buf: Gtk.TextBuffer | None = None
         self._build_ui()
         self.connect("map", self._on_map)
-        center_on_parent(self)
 
     def _build_ui(self) -> None:
         outer = Gtk.Box(

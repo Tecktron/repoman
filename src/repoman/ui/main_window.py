@@ -28,7 +28,6 @@ from ..upgrade_info import get_all_known_codenames
 from ..utils import get_current_codename, repos_needing_attention
 from ..writer import repo_to_deb822
 from .detail_pane import DetailPane
-from .position import center_on_parent, center_on_screen
 from .repo_row import RepoRow
 from .wizard.dialog import RepomanWizardDialog
 from .wizard.restore_dialog import RestoreWizardDialog
@@ -62,7 +61,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         self._build_ui()
         self._setup_accels()
         self.connect("realize", self._on_realize)
-        center_on_screen(self)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -152,7 +150,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         # Tools
         tools = Gio.Menu()
         tools.append("Run Upgrade Assistant…", "win.upgrade-wizard")
-        tools.append("Check pre-update compatibility…", "win.compat-check")
+        tools.append("Check pre-upgrade compatibility…", "win.compat-check")
         companion_section = Gio.Menu()
         companion_section.append("Software Updater", "win.launch-updater")
         companion_section.append("Software & Updates", "win.launch-software-properties")
@@ -184,7 +182,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         help_menu.append("Keyboard Shortcuts", "win.show-shortcuts")
         help_section = Gio.Menu()
         help_section.append("Help", "win.open-help")
-        help_section.append("About repoman", "win.about")
+        help_section.append("About Repoman", "win.about")
         help_menu.append_section(None, help_section)
         model.append_submenu("Help", help_menu)
 
@@ -388,7 +386,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         if enabled_count == 0:
             return
         dlg = Gtk.Window(
-            title="Disable all repositories?",
+            title="Disable All Repositories",
             transient_for=self,
             modal=True,
             resizable=False,
@@ -424,7 +422,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         btn_row.append(disable_btn)
         box.append(btn_row)
         dlg.set_child(box)
-        center_on_parent(dlg)
         dlg.present()
 
     def _do_disable_all(self) -> None:
@@ -490,7 +487,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         repos = self._repos
 
         dlg = Gtk.Window(
-            title="Remove repositories",
+            title="Remove Multiple Repositories",
             transient_for=self,
             modal=True,
             resizable=False,
@@ -556,7 +553,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
             self._remove_sel_btn.set_sensitive(count > 0)
 
         dlg.set_child(outer)
-        center_on_parent(dlg)
         dlg.present()
 
     def _do_remove_multiple(self, checks: list[tuple[Repository, Gtk.CheckButton]], current_file: Path | None) -> None:
@@ -644,7 +640,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
             btn_row.append(ok_btn)
             box.append(btn_row)
             dlg.set_child(box)
-            center_on_parent(dlg)
             dlg.present()
             return
 
@@ -673,11 +668,11 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     def _save_config(self) -> None:
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Save repository configuration")
+        dialog.set_title("Save state")
         dialog.set_initial_name(f"state-{date.today()}.repoman")
         f = Gtk.FileFilter()
         f.add_pattern("*.repoman")
-        f.set_name("Repoman configs (*.repoman)")
+        f.set_name("Repoman state files (*.repoman)")
         store = Gio.ListStore.new(Gtk.FileFilter)
         store.append(f)
         dialog.set_filters(store)
@@ -700,10 +695,10 @@ class RepomanWindow(Gtk.ApplicationWindow):
 
     def _load_config(self) -> None:
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Load repository configuration")
+        dialog.set_title("Load state")
         f = Gtk.FileFilter()
         f.add_pattern("*.repoman")
-        f.set_name("Repoman configs (*.repoman)")
+        f.set_name("Repoman state files (*.repoman)")
         store = Gio.ListStore.new(Gtk.FileFilter)
         store.append(f)
         dialog.set_filters(store)
@@ -856,12 +851,11 @@ class RepomanWindow(Gtk.ApplicationWindow):
         )
         box.append(Gtk.Label(label=body, wrap=True, xalign=0, max_width_chars=48))
         btn_row = Gtk.Box(spacing=6, halign=Gtk.Align.END, margin_top=6)
-        skip_btn = Gtk.Button(label="Skip")
-        skip_btn.connect("clicked", lambda _: dlg.close())
-        btn_row.append(skip_btn)
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dlg.close())
+        btn_row.append(cancel_btn)
         if 0 < enabled_count < n:
             enabled_btn = Gtk.Button(label=f"Add {enabled_count} enabled")
-            enabled_btn.add_css_class("suggested-action")
             enabled_btn.connect("clicked", lambda _: (dlg.close(), self._on_missing_response("enabled-only", missing)))
             btn_row.append(enabled_btn)
         all_btn = Gtk.Button(label=f"Add all {n}")
@@ -870,7 +864,6 @@ class RepomanWindow(Gtk.ApplicationWindow):
         btn_row.append(all_btn)
         box.append(btn_row)
         dlg.set_child(box)
-        center_on_parent(dlg)
         dlg.present()
 
     def _on_missing_response(self, response: str, missing: list[dict]) -> None:
@@ -928,7 +921,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             resizable=False,
         )
         win.set_icon_name("net.tecktron.repoman")
-        center_on_parent(win)
+
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             margin_top=24,
@@ -940,7 +933,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         general_group = Adw.PreferencesGroup(title="General")
         for label, accel in [
             ("Search repositories", "<Primary>f"),
-            ("Open upgrade assistant", "<Primary>u"),
+            ("Run Upgrade Assistant", "<Primary>u"),
             ("Keyboard shortcuts", "<Primary>F1"),
             ("Exit", "<Primary>q"),
         ]:
@@ -953,7 +946,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
         for label, accel in [
             ("Add repository", "<Primary>n"),
             ("Refresh repository list", "F5"),
-            ("Open Software Updater", "<Primary>r"),
+            ("Software Updater", "<Primary>r"),
             ("Save repository state", "<Primary>s"),
         ]:
             row = Adw.ActionRow(title=label)
@@ -976,7 +969,7 @@ class RepomanWindow(Gtk.ApplicationWindow):
             resizable=False,
         )
         win.set_icon_name("net.tecktron.repoman")
-        center_on_parent(win)
+
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             margin_top=24,

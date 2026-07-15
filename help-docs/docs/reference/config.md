@@ -22,12 +22,14 @@ Three outcomes per repository in the file:
 
 If any repositories from the file are not found on the system, a dialog lists them and offers three options:
 
-- **Skip** — load the changes to existing repositories and ignore the missing ones
+- **Cancel** — load the changes to existing repositories and ignore the missing ones
 - **Add N enabled** — create `.sources` files for the missing repositories with `Enabled: yes`
 - **Add all N** — same, but respects the `enabled` state from the file
 
-!!! warning "Signing keys"
-    If a missing repository references an external keyring file (e.g. `/usr/share/keyrings/example.gpg`), that file is **not** stored in the state file — only the path. You will need to install the key on the new machine before APT can verify packages from that repository. Repositories with inline PGP keys embedded directly in the `.sources` file do travel in the state file and require no extra step.
+!!! info "Signing keys (v2 files)"
+    Version 2 state files embed the GPG key bytes as `signed_by_content_b64` when the key file is readable at save time. On restore, repoman writes the key file automatically — no manual step needed.
+
+    If the key was not readable at save time, or you are loading a version 1 file, only the path is stored. In that case you will need to install the key on the new machine before APT can verify packages from that repository.
 
 Repositories on the system that are absent from the file are left untouched.
 
@@ -37,8 +39,9 @@ State files are JSON with a `.repoman` extension:
 
 ```json
 {
-  "version": 1,
-  "saved_at": "2026-06-23T22:00:00",
+  "version": 2,
+  "saved_at": "2026-07-15T14:22:00",
+  "saved_codename": "noble",
   "repos": [
     {
       "types": ["deb"],
@@ -48,6 +51,7 @@ State files are JSON with a `.repoman` extension:
       "enabled": true,
       "description": "Example Project",
       "signed_by": "/usr/share/keyrings/example.gpg",
+      "signed_by_content_b64": "<base64-encoded key bytes>",
       "source_file": "/etc/apt/sources.list.d/example.sources"
     }
   ]
@@ -58,8 +62,9 @@ Fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `version` | integer | File format version. Currently `1`. |
+| `version` | integer | File format version. Currently `2`. |
 | `saved_at` | string | ISO 8601 timestamp of when the file was saved. |
+| `saved_codename` | string | Ubuntu codename of the machine that saved the file. Absent in v1 files. Triggers cross-machine restore when it differs from the current codename. |
 | `repos` | array | List of repository entries. |
 | `types` | string[] | `["deb"]`, `["deb-src"]`, or `["deb", "deb-src"]` |
 | `uris` | string[] | Repository base URLs. Matching on load uses `uris[0]`. |
@@ -69,7 +74,26 @@ Fields:
 | `description` | string or null | Human-readable name (`X-Repolib-Name`). |
 | `architectures` | string[] | Architecture filter (e.g. `["amd64"]`). Empty list means all architectures. |
 | `signed_by` | string or null | Path to a GPG keyring file, or an inline ASCII-armored PGP key block. |
+| `signed_by_content_b64` | string or null | Base64-encoded GPG key bytes, embedded at save time when the key file is readable. Used by the restore flow to write the key automatically. Absent in v1 files. |
 | `source_file` | string | Original path in `sources.list.d/` — used as a hint when creating missing repos. |
+
+### Cross-machine restore
+
+When `saved_codename` is present in the file and differs from the current machine's
+codename, repoman launches the cross-machine restore wizard instead of the fast path.
+
+Each repository entry in the file is classified into one of four actions:
+
+| Classification | Condition | Result |
+|----------------|-----------|--------|
+| `restore_as_is` | Suite already matches current codename, or suite is agnostic | Sync enabled state only |
+| `update_suite` | Suite is a stale codename (non-PPA repo) | Update suite to current codename and sync enabled state |
+| `add_disabled` | PPA confirmed unavailable for current codename | Create as disabled |
+| `ppa_check` | PPA not yet checked | Live availability check (HEAD to InRelease) → resolves to `update_suite` or `add_disabled` |
+
+The wizard shows a three-page flow: classify → check PPAs (if any `ppa_check` entries
+remain) → confirm and apply. See the [State Management guide](../usage/state-management.md)
+for a full walkthrough with screenshots.
 
 ## Suite-agnostic names
 

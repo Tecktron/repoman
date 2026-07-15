@@ -11,13 +11,13 @@ are visible alongside the test files — focus on the `repoman-test-*` entries.
 ### 1a. Install polkit policy
 
 ```bash
-sudo cp /home/craig/Projects/repoman/data/io.github.Tecktron.repoman.policy \
+sudo cp /home/craig/Projects/repoman/data/net.tecktron.repoman.policy \
         /usr/share/polkit-1/actions/
 ```
 
 Verify:
 ```bash
-ls /usr/share/polkit-1/actions/io.github.Tecktron.repoman.policy
+ls /usr/share/polkit-1/actions/net.tecktron.repoman.policy
 ```
 
 ### 1b. Make polkit helper executable
@@ -245,7 +245,7 @@ cat /etc/apt/sources.list.d/repoman-test-fake.sources
 
 ## Phase 7 — Compat checker
 
-Open **Tools → Check pre-update compatibility…**
+Open **Tools → Check pre-upgrade compatibility…**
 
 **Expected:**
 - Window opens with Xfwm4 titlebar
@@ -330,9 +330,9 @@ To also test the GPG warning shown in the dialog, add `"signed_by": "/usr/share/
 
 ## Phase 9 — Add repository
 
-### 9a. Add via Auto tab (one-liner)
+### 9a. Add via URL tab (one-liner)
 
-Open **Repos → Add Repository…**, paste into the Auto tab:
+Open **Repos → Add Repository…**, paste into the URL tab:
 
 ```
 deb https://download.docker.com/linux/ubuntu noble stable
@@ -345,7 +345,7 @@ Click **Add Repository**.
 - After auth: new `download-docker-com.sources` row appears in sidebar, selected
 - Detail pane shows the Docker URI, suite `noble`, component `stable`
 
-### 9b. Add via Auto tab (DEB822 block)
+### 9b. Add via URL tab (DEB822 block)
 
 Open **Repos → Add Repository…**, paste a full DEB822 block:
 
@@ -383,9 +383,9 @@ Manual tab, fill URI + paste a key URL (e.g. `https://packages.microsoft.com/key
 - After polkit: both `.sources` and `.gpg` files created
 - Detail pane signing row shows the key filename
 
-### 9e. Auto tab — parse failure
+### 9e. URL tab — parse failure
 
-Open **Repos → Add Repository…**, paste garbage text into Auto tab and click **Add Repository**.
+Open **Repos → Add Repository…**, paste garbage text into URL tab and click **Add Repository**.
 
 **Expected:** Inline error label appears ("Could not parse…"), button re-enables.
 
@@ -563,12 +563,12 @@ pkill -f "python3 -m repoman.main"
 - [ ] "Add all" creates files and reloads sidebar
 
 ### Add Repository
-- [ ] Auto tab: one-liner parses correctly, polkit fires, row selected after add
-- [ ] Auto tab: DEB822 block parses correctly including X-Repolib-Name
+- [ ] URL tab: one-liner parses correctly, polkit fires, row selected after add
+- [ ] URL tab: DEB822 block parses correctly including X-Repolib-Name
 - [ ] Manual tab: repo created from individual fields
 - [ ] Manual tab: GPG key URL auto-fills Signing key path field
 - [ ] Manual tab: key URL provided → key file written alongside .sources in one polkit call
-- [ ] Auto tab: bad input shows inline error, button re-enables
+- [ ] URL tab: bad input shows inline error, button re-enables
 - [ ] Manual tab: empty URI keeps "Add Repository" insensitive
 
 ### Remove Repository

@@ -1,3 +1,30 @@
+repoman (1.0.0-1) noble; urgency=low
+
+  * 1.0 release — stable and shippable.
+  * UI consistency pass: standardize "Upgrade Assistant" and "pre-upgrade" naming
+    throughout menus, window titles, shortcuts popup, and help-docs.
+  * Fix CompatChecker button order (Close left, Check right — was reversed).
+  * Fix missing repos dialog: "Skip" -> "Cancel"; remove double suggested-action.
+  * Fix "Disable All Repositories" window title (removed question mark).
+  * Fix "About Repoman" menu label capitalisation.
+  * Fix "Remove Multiple Repositories" window title.
+  * Standardize state file terminology: "Save/Load state" throughout (was
+    "configuration" / "configs" in file dialogs and filter label).
+  * Remove phantom dependencies: python3-xlib and gir1.2-packagekitglib-1.0.
+  * Add AppStream screenshots to metainfo.xml.
+  * Help-docs: config reference updated to v2 format with correct key-bundling
+    description; cross-machine restore classification flow documented.
+  * Help-docs: hamburger nav dropdown synced with full mkdocs.yml nav (was
+    missing Why repoman, Installation, State Management pages).
+  * Help-docs: keyboard shortcuts table added to Getting Started.
+  * Help-docs: companion tools section (Software Updater, Software & Updates,
+    Install a .deb) added to Managing Repositories.
+  * README: PPA install instructions added; PackageKit claim corrected;
+    Desktop integration notes section added; Building the docs section added.
+  * Remove window positioning code; placement left entirely to the window manager.
+
+ -- Tecktron Studios <software@tecktron.net>  Tue, 15 Jul 2026 00:00:00 +0000
+
 repoman (0.2.1-1) noble; urgency=low
 
   * Rename app ID to net.tecktron.repoman (owned domain, no github dependency).
@@ -8,6 +35,11 @@ repoman (0.2.1-1) noble; urgency=low
   * Fix availability icon (tecktron-repoman-available, was pamac-tray-no-update).
   * Fix: entry_to_repository normalises .list source paths to .sources.
   * Fix: _show_missing_repos_dialog guards against empty missing list.
+  * Remove window positioning code entirely. GTK4 removed gtk_window_move() and
+    made sane window placement basically impossible without either fighting the
+    toolkit through undocumented internals or accepting Adwaita overlay dialogs
+    that look completely out of place on any non-GNOME desktop. Window placement
+    is now left entirely to the window manager, which is what GTK4 intended.
 
  -- Tecktron Studios <software@tecktron.net>  Fri, 11 Jul 2026 00:00:00 +0000
 

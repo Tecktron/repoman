@@ -22,7 +22,7 @@ The banner shows how many repositories need attention. Click **Review** to open 
 
 ![Upgrade banner](assets/screenshots/main-window-upgrade-banner.png)
 
-You can also open the upgrade wizard at any time via **Tools → Run Upgrade Assistant**, whether the banner is visible or not.
+You can also open the upgrade wizard at any time via **Tools → Run Upgrade Assistant…**, whether the banner is visible or not.
 
 ## Status icons
 
@@ -42,6 +42,21 @@ The `?` icon is the default before any availability check runs. The wizard runs 
 - Ubuntu's own repositories (`archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `esm.ubuntu.com`)
 - Any repository in `/etc/apt/sources.list` (the legacy root file) — only files in `sources.list.d/` are managed
 - Package installation, removal, or updates — repoman only manages repository configuration
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+U` | Run Upgrade Assistant |
+| `Ctrl+R` | Open Software Updater |
+| `F5` | Refresh repository list |
+| `Ctrl+N` | Add Repository |
+| `Ctrl+S` | Save state |
+| `Ctrl+F` | Search repositories |
+| `Ctrl+F1` | Keyboard shortcuts window |
+| `Ctrl+Q` | Exit |
+
+The full list is also available in the app under **Help → Keyboard Shortcuts**.
 
 ## Next steps
 

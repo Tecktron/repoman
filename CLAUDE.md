@@ -151,8 +151,6 @@ src/repoman/
     compat_checker.py — CompatCheckerWindow (Gtk.Window); combo selects target release;
                         PPA availability via get_ppa_suites(); status buttons;
                         enrichment popover for UNAVAILABLE PPAs (latest/last available)
-    position.py      — center_on_screen(), center_on_parent() via python-xlib;
-                       post-map positioning (known flicker — deferred fix)
 
   ui/wizard/
     dialog.py        — RepomanWizardDialog (Gtk.Window); AdwNavigationView;
@@ -308,11 +306,9 @@ This gives consistent Xfwm4 system titlebars. libadwaita widgets inside still wo
 
 `Adw.Dialog` is NOT used — `Gtk.Window` gives consistent Xfwm4 system titlebars and the approach is already established across all windows.
 
-**Centering** (`src/repoman/ui/position.py`): post-map via python-xlib
-(`configure(x=y)` + `display.sync()`). Known issue: slight flicker because the WM
-places the window before the move fires. Pre-realize positioning is the correct fix
-but is deferred. `center_on_screen()` for the main window; `center_on_parent()` for
-all secondary windows.
+**Window placement** is left entirely to the WM. GTK4 removed `gtk_window_move()`;
+the only toolkit-native alternative (`Adw.Dialog` overlay) is inconsistent with
+Xfwm4 system titlebars used throughout. No positioning code exists in this project.
 
 **Wizard close**: `RepomanWizardDialog.do_close_request()` returns `True` (suppress
 default), calls `_schedule_close()` which emits `closing`, hides the window, then
@@ -494,20 +490,21 @@ fast path with reduced capability.
 
 ## Known issues / deferred work
 
-- **Window positioning flicker**: move fires post-map (window appears at WM default,
-  then jumps). Fix: pre-realize positioning with `get_default_size()`. Deferred.
 - **`.list` → `.sources` conversion**: converter.py is written; detail_pane.py
   save path triggers it correctly. Not yet exercised in a real-world test.
 - **Distribution**: PPA at `ppa:tecktron-studios/repoman` published; noble, questing, resolute.
+- **libadwaita theming**: App uses `Adw.*` widgets (ActionRow, NavigationView, etc.),
+  so it renders with Adwaita styling rather than the system GTK4 theme. Long-term goal
+  is to replace these with raw GTK4 equivalents to support system themes and a possible
+  custom repoman theme on Xfce. Deferred — moderate effort, no feature gain.
 
 ---
 
 ## Build / packaging
 
 Runtime deps (system packages, not pip): `python3-gi`, `gir1.2-gtk-4.0`,
-`gir1.2-adw-1` (≥1.5), `gir1.2-packagekitglib-1.0`, `python3-debian`,
-`python3-launchpadlib`, `python3-requests`, `python3-xlib`, `policykit-1`,
-`lsb-release`.
+`gir1.2-adw-1` (≥1.5), `python3-debian`, `python3-launchpadlib`,
+`python3-requests`, `policykit-1`, `lsb-release`.
 
 polkit policy must be installed to `/usr/share/polkit-1/actions/` and polkit
 restarted (`systemctl restart polkit`) before the wizard's Apply step works.

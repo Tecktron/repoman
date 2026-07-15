@@ -17,13 +17,12 @@ from ..upgrade_info import (
     get_upgrade_prompt,
     get_upgrade_targets,
 )
-from .position import center_on_parent
 from .wizard.popover import _clear_label_selections, make_info_button
 
 
 class CompatCheckerWindow(Gtk.Window):
     """
-    Modal window for checking pre-update PPA compatibility.
+    Modal window for checking pre-upgrade PPA compatibility.
     Uses Gtk.Window (system titlebar) to match the main window and wizard.
     """
 
@@ -31,7 +30,7 @@ class CompatCheckerWindow(Gtk.Window):
 
     def __init__(self, repos: list[Repository], parent: Gtk.Window) -> None:
         super().__init__(
-            title="Pre-update compatibility check",
+            title="Pre-upgrade Compatibility Check",
             modal=True,
             transient_for=parent,
             default_width=520,
@@ -52,7 +51,6 @@ class CompatCheckerWindow(Gtk.Window):
         self._ordered_codenames: list[str] = []
         self._ppa_group: Adw.PreferencesGroup | None = None
 
-        center_on_parent(self)
         self._categorize_repos()
         self._build_ui()
         GLib.idle_add(self._load_system_info)
@@ -133,6 +131,10 @@ class CompatCheckerWindow(Gtk.Window):
             margin_end=10,
             spacing=8,
         )
+        close_button = Gtk.Button(label="Close")
+        close_button.connect("clicked", lambda _: self.close())
+        action_bar.append(close_button)
+
         self._check_button = Gtk.Button(
             label="Check compatibility",
             hexpand=True,
@@ -141,10 +143,6 @@ class CompatCheckerWindow(Gtk.Window):
         self._check_button.add_css_class("suggested-action")
         self._check_button.connect("clicked", self._on_check_clicked)
         action_bar.append(self._check_button)
-
-        close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", lambda _: self.close())
-        action_bar.append(close_button)
         outer_box.append(action_bar)
 
     def _load_system_info(self) -> bool:

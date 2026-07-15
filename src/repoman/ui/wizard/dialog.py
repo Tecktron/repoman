@@ -14,7 +14,6 @@ from gi.repository import Adw, GLib, GObject, Gtk
 
 from ...models import Repository, WizardState
 from ...utils import get_current_codename
-from ..position import center_on_parent
 from .select_page import SelectReposPage
 
 
@@ -42,7 +41,7 @@ class RepomanWizardDialog(Gtk.Window):
         **kwargs,
     ) -> None:
         super().__init__(
-            title="Upgrade assistant",
+            title="Upgrade Assistant",
             modal=True,
             transient_for=parent,
             default_width=480,
@@ -50,7 +49,6 @@ class RepomanWizardDialog(Gtk.Window):
             **kwargs,
         )
         self.set_icon_name("net.tecktron.repoman")
-        center_on_parent(self)
         self._closing = False
         self._state = WizardState(
             candidate_repos=repos,

@@ -266,9 +266,6 @@ class DetailPane(Gtk.Box):
         btn_row.append(remove_btn)
         box.append(btn_row)
         dlg.set_child(box)
-        from .position import center_on_parent
-
-        center_on_parent(dlg)
         dlg.present()
 
     def _do_remove(self, repo: Repository) -> None:

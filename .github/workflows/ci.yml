@@ -35,8 +35,7 @@ jobs:
             gir1.2-glib-2.0 \
             python3-debian \
             python3-launchpadlib \
-            python3-requests \
-            python3-xlib
+            python3-requests
       - name: Install test runner
         run: pip install pytest pytest-mock --break-system-packages
       - name: Run tests

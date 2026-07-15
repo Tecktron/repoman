@@ -104,7 +104,7 @@ Every repository row in the detail pane has a **Signing key** section showing th
 
 Click **Add** to open the key editor. Three ways to provide a key:
 
-- **Fetch** — enter a key URL and click Fetch. For PPA repositories, the key is retrieved automatically from Launchpad without a URL.
+- **Fetch from URL** — enter a key URL and click Fetch. For PPA repositories, the key is retrieved automatically from Launchpad without a URL.
 - **Use existing file** — browse to a `.gpg`, `.asc`, or `.pgp` file already on your system.
 - **Paste** — paste an ASCII-armored key block directly. repoman verifies it before saving.
 
@@ -126,6 +126,18 @@ Re-enable them individually from the detail pane, or use the upgrade wizard afte
 ## Saving and restoring your configuration
 
 **Repos → Save state…** exports all repositories to a `.repoman` file. **Repos → Load state…** restores them — on the same machine or a different one. When loading on a different Ubuntu release, repoman adapts suites automatically and bundles GPG keys so no manual key installation is needed.
+
+## Companion tools
+
+The **Tools** menu includes shortcuts to system utilities that complement repository management:
+
+| Menu item | What it opens | Requires |
+|-----------|---------------|---------|
+| **Software Updater** (`Ctrl+R`) | `update-manager` — apply pending package updates | `update-manager` |
+| **Software & Updates** | `software-properties-gtk` — manage Ubuntu channels, PPAs, and driver sources | `software-properties-gtk` |
+| **Install a .deb package…** | `gdebi` — install a locally downloaded `.deb` file with dependency resolution | `gdebi` |
+
+If a tool is not installed, its menu item is greyed out automatically at startup.
 
 See [State Management](state-management.md) for the full workflow.
 

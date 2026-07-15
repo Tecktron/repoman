@@ -12,15 +12,34 @@ A GTK4 + libadwaita graphical tool for managing third-party APT repositories on 
 - Detects disabled repos and stale codenames left over after Ubuntu upgrades
 - **Upgrade wizard** — select repos, check availability against Launchpad/network, confirm, apply in one polkit prompt
 - **Pre-upgrade compatibility checker** — pick a target release and see which PPAs support it, with "last available" enrichment for discontinued ones
-- **Add repository** — paste a one-liner or DEB822 block (Auto tab), or fill individual fields (Manual tab), with optional GPG key fetch
+- **Add repository** — paste a one-liner or DEB822 block (URL tab), or fill individual fields (Manual tab), with optional GPG key fetch
 - **Remove** a single repository or multiple at once
 - **GPG signing key editor** — fetch from URL, browse, or paste; verify before installing
 - **Edit** description, suite, components, enabled state, and signing key path for any repo
 - **Annotations** — human-readable names stored as `X-Repolib-Name:` in `.sources` files; survive future upgrades
 - **Legacy `.list` → DEB822 `.sources` conversion** on save
 - **State management** — save and load `.repoman` snapshots to migrate configs across machines
-- **Reload** repository metadata via PackageKit (`apt update` equivalent)
+- **Software Updater** — launch Software Updater (`update-manager`) to apply pending package updates
 - Privilege separation — GUI runs as your normal user; file writes go through a polkit helper
+
+---
+
+## Desktop integration notes
+
+**Window placement:** GTK4 removed `gtk_window_move()` and every other sane way for
+an application to control its initial window position. The only GTK4-native alternative
+for centered dialogs is `Adw.Dialog`, which renders as an overlay with Adwaita chrome —
+completely inconsistent with the system-decorated windows every other Xfce application
+uses. Rather than fight the toolkit through fragile undocumented internals (and lose),
+window placement in repoman is left entirely to the window manager. Windows will appear
+wherever your WM decides to put them.
+
+**Theming:** repoman uses libadwaita for its widget set (`Adw.ActionRow`, `Adw.NavigationView`,
+etc.), which means it renders with Adwaita styling rather than your system GTK4 theme.
+The long-term goal is to replace the Adw.* widgets with raw GTK4 equivalents so the
+app can pick up system themes on Xfce (and potentially ship its own theme). This is
+deferred — replacing the widget set is moderate effort with no feature gain — but it
+is tracked for a future release.
 
 ---
 
@@ -36,11 +55,9 @@ Runtime dependencies (all available as system packages):
 | `python3-gi` | GObject introspection bindings |
 | `gir1.2-gtk-4.0` | GTK 4 |
 | `gir1.2-adw-1` (≥ 1.5) | libadwaita |
-| `gir1.2-packagekitglib-1.0` | PackageKit (apt update) |
 | `python3-debian` | DEB822 file parsing |
 | `python3-launchpadlib` | Launchpad PPA availability checks |
 | `python3-requests` | HTTP for non-PPA availability checks |
-| `python3-xlib` | Window centering via X11 |
 | `policykit-1` | Polkit for privileged writes |
 | `lsb-release` | Current codename detection |
 
@@ -48,9 +65,19 @@ Runtime dependencies (all available as system packages):
 
 ## Installation
 
-### From a .deb package (recommended)
+### From the PPA (recommended)
 
-Not yet published. See [Building a .deb](#building-a-deb) below.
+```bash
+sudo add-apt-repository ppa:tecktron-studios/repoman
+sudo apt update
+sudo apt install repoman
+```
+
+Supported Ubuntu releases: Noble (24.04), Questing (25.04), Resolute (25.10).
+
+### From a .deb package
+
+Build one locally — see [Building a .deb](#building-a-deb) below.
 
 ### Manual install with make
 
@@ -89,8 +116,8 @@ What `make install` does:
 Install runtime dependencies:
 
 ```bash
-sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-packagekitglib-1.0 \
-    python3-debian python3-launchpadlib python3-requests python3-xlib \
+sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 \
+    python3-debian python3-launchpadlib python3-requests \
     policykit-1 lsb-release
 ```
 
@@ -117,7 +144,7 @@ cd /path/to/repoman
 # Kill any existing instance first — a second launch opens in the existing process
 pkill -f "python3 -m repoman.main" 2>/dev/null; sleep 0.3
 
-PYTHONPATH=/usr/lib/python3/dist-packages:/path/to/repoman/src \
+PYTHONPATH=/path/to/repoman/src:/usr/lib/python3/dist-packages \
 DISPLAY=:0 \
 python3 -m repoman.main
 ```
@@ -138,6 +165,26 @@ sudo dpkg -i ../repoman_*.deb
 ```
 
 The `debian/` directory contains `control`, `rules` (debhelper + pybuild), `install`, `postinst` (runs post-install hooks), and `changelog`.
+
+---
+
+## Building the docs
+
+The documentation site is live at **https://repoman.tecktron.net/** and is built with
+[MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
+
+To serve the docs locally:
+
+```bash
+pip install mkdocs-material
+cd help-docs
+mkdocs serve
+# open http://127.0.0.1:8000
+```
+
+The Sphinx API reference is auto-generated from docstrings and is included in the
+deployed site under **Developer API Reference**. To build it locally, see
+`help-docs/docs/developers/index.md` for the setup steps.
 
 ---
 
@@ -167,7 +214,6 @@ repoman/
 │       ├── add_repo_dialog.py   # Add Repository dialog (Auto + Manual tabs)
 │       ├── key_editor_window.py # Add/Edit GPG signing key window
 │       ├── compat_checker.py    # Pre-upgrade compatibility checker window
-│       ├── position.py          # Window centering via python-xlib
 │       └── wizard/
 │           ├── dialog.py        # RepomanWizardDialog — upgrade assistant
 │           ├── base_page.py     # RepomanWizardPage base class

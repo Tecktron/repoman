@@ -26,7 +26,6 @@ from ..source_parse import (
 )
 from ..utils import get_current_codename
 from ..writer import repo_to_deb822
-from .position import center_on_parent
 
 _SOURCES_DIR = Path("/etc/apt/sources.list.d")
 _KEYRINGS_DIR = Path("/usr/share/keyrings")
@@ -69,7 +68,6 @@ class AddRepoDialog(Gtk.Window):
         )
         self.set_icon_name("net.tecktron.repoman")
         self._build_ui()
-        center_on_parent(self)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -280,7 +278,7 @@ class AddRepoDialog(Gtk.Window):
         else:
             self._do_add_manual()
 
-    # --- Auto tab ---
+    # --- URL tab ---
 
     def _do_add_auto(self) -> None:
         buf = self._auto_text.get_buffer()

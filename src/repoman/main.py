@@ -13,7 +13,6 @@ from gi.repository import Adw, Gio, Gtk
 
 from .paths import check_required_tools
 from .ui.main_window import RepomanWindow
-from .ui.position import center_on_screen
 
 
 class RepomanApplication(Adw.Application):
@@ -68,7 +67,6 @@ class RepomanApplication(Adw.Application):
             btn_row.append(quit_btn)
             box.append(btn_row)
             dlg.set_child(box)
-            center_on_screen(dlg)
             dlg.present()
             return
 

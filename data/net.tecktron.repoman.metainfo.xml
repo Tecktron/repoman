@@ -22,11 +22,30 @@
       <li>Pre-upgrade compatibility checker with per-PPA availability details</li>
       <li>Add and remove repositories with GPG key management</li>
       <li>Save and restore repository state across upgrades (.repoman files)</li>
-      <li>Reload repository metadata (apt update) from within the app</li>
+      <li>Launch Software Updater to apply pending package updates</li>
     </ul>
   </description>
 
   <launchable type="desktop-id">net.tecktron.repoman.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window showing the repository list and detail pane</caption>
+      <image>https://repoman.tecktron.net/assets/screenshots/main-window-overview.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Upgrade wizard step 1 — select repositories to migrate</caption>
+      <image>https://repoman.tecktron.net/assets/screenshots/wizard-step1-select.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Upgrade wizard step 3 — review and apply changes</caption>
+      <image>https://repoman.tecktron.net/assets/screenshots/wizard-step3-confirm.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Repository detail pane — edit suite, components, and signing key</caption>
+      <image>https://repoman.tecktron.net/assets/screenshots/detail-pane-edit.png</image>
+    </screenshot>
+  </screenshots>
 
   <url type="homepage">https://repoman.tecktron.net/</url>
   <url type="bugtracker">https://github.com/Tecktron/repoman/issues</url>
@@ -46,6 +65,24 @@
   </recommends>
 
   <releases>
+    <release version="1.0.0" date="2026-07-15">
+      <description>
+        <p>1.0 release — stable and shippable:</p>
+        <ul>
+          <li>UI label and button consistency pass across all windows and dialogs</li>
+          <li>Pre-upgrade compatibility checker renamed consistently throughout (was "pre-update")</li>
+          <li>CompatChecker button order corrected (Close left, Check right)</li>
+          <li>Missing repos dialog: Cancel replaces Skip; single primary action button</li>
+          <li>State file terminology standardized to "state" throughout</li>
+          <li>Remove phantom dependencies: python3-xlib and gir1.2-packagekitglib-1.0</li>
+          <li>AppStream screenshots added to metainfo.xml</li>
+          <li>Help-docs: config reference updated to v2 format with correct key-bundling behaviour</li>
+          <li>Help-docs: hamburger nav dropdown synced with full site nav</li>
+          <li>Help-docs: keyboard shortcuts table, companion tools section, cross-machine restore reference</li>
+          <li>Window positioning code removed; window placement left to the WM</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-07-10">
       <description>
         <p>Polish and fixes:</p>
