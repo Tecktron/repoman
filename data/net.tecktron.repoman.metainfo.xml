@@ -65,6 +65,15 @@
   </recommends>
 
   <releases>
+    <release version="1.0.1" date="2026-07-15">
+      <description>
+        <p>Doc build fix:</p>
+        <ul>
+          <li>Fix Sphinx autodoc failure: remove deleted position module reference from ui.rst</li>
+          <li>Remove GdkX11 and Xlib from sphinx/conf.py autodoc_mock_imports</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-07-15">
       <description>
         <p>1.0 release — stable and shippable:</p>

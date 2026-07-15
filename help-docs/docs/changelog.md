@@ -2,6 +2,15 @@
 
 All notable changes to repoman will be documented here. repoman uses [Semantic Versioning](https://semver.org/).
 
+## 1.0.1 — 2026-07-15
+
+### Fixed
+
+- Sphinx API docs build failure: `repoman.ui.position` reference removed from `sphinx/api/ui.rst` after the module was deleted in 1.0.0.
+- `gi.repository.GdkX11` and `Xlib` removed from `sphinx/conf.py` autodoc mock imports (dependencies removed in 1.0.0).
+
+---
+
 ## 1.0.0 — 2026-07-15
 
 ### Changed

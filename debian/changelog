@@ -1,3 +1,11 @@
+repoman (1.0.1-1) noble; urgency=low
+
+  * Fix Sphinx autodoc referencing deleted position module; CI docs build broken.
+  * Remove gi.repository.GdkX11 and Xlib from sphinx/conf.py autodoc_mock_imports.
+  * Remove stale X11 exception-handling rule from CLAUDE.md.
+
+ -- Tecktron Studios <software@tecktron.net>  Tue, 15 Jul 2026 00:00:00 +0000
+
 repoman (1.0.0-1) noble; urgency=low
 
   * 1.0 release — stable and shippable.
